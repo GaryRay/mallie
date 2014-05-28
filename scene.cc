@@ -12,7 +12,11 @@ void Node::UpdateTransform() {}
 
 Scene::~Scene() {
   delete[] mesh_.vertices;
+#ifdef ENABLE_OSD_PATCH
+  delete[] mesh_.regularPatchIndices;
+#else
   delete[] mesh_.faces;
+#endif
   delete[] mesh_.materialIDs;
 }
 

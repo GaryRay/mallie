@@ -291,7 +291,12 @@ real3 PathTrace(Scene &scene, const Camera &camera, const RenderConfig &config,
       }
 
       // Hit background.
+#if 0
       real3 kd = real3(0.5, 0.5, 0.5);
+#else
+      real is = std::max(0.05, ray.dir.y);
+      real3 kd = real3(is, is, is);
+#endif
       radiance += kd / real3(pathLength, pathLength, pathLength);
     }
 

@@ -52,6 +52,7 @@ static inline double CalculateSurfaceArea(const real3 &min, const real3 &max) {
   return 2.0 * (box[0] * box[1] + box[1] * box[2] + box[2] * box[0]);
 }
 
+#ifndef ENABLE_OSD_PATCH
 static inline void GetBoundingBoxOfTriangle(real3 &bmin, real3 &bmax,
                                             const Mesh *mesh,
                                             unsigned int index) {
@@ -78,6 +79,32 @@ static inline void GetBoundingBoxOfTriangle(real3 &bmin, real3 &bmax,
     bmax[2] = std::max(bmax[2], p[i][2]);
   }
 }
+#endif
+
+#ifdef ENABLE_OSD_PATCH
+static inline void GetBoundingBoxOfRegularPatch(real3 &bmin, real3 &bmax,
+                                                const Mesh *mesh,
+                                                unsigned int index) {
+
+  real3 p[16];
+  for (int i = 0; i < 16; ++i) {
+    unsigned int f = mesh->regularPatchIndices[16 * index + i];
+    p[i] = real3(&mesh->vertices[3 * f]);
+  }
+  bmin = p[0];
+  bmax = p[0];
+
+  for (int i = 1; i < 16; i++) {
+    bmin[0] = std::min(bmin[0], p[i][0]);
+    bmin[1] = std::min(bmin[1], p[i][1]);
+    bmin[2] = std::min(bmin[2], p[i][2]);
+
+    bmax[0] = std::max(bmax[0], p[i][0]);
+    bmax[1] = std::max(bmax[1], p[i][1]);
+    bmax[2] = std::max(bmax[2], p[i][2]);
+  }
+}
+#endif
 
 static void ContributeBinBuffer(BinBuffer *bins, // [out]
                                 const real3 &sceneMin, const real3 &sceneMax,
@@ -116,7 +143,11 @@ static void ContributeBinBuffer(BinBuffer *bins, // [out]
     real3 bmin;
     real3 bmax;
 
+#ifdef ENABLE_OSD_PATCH
+    GetBoundingBoxOfRegularPatch(bmin, bmax, mesh, indices[i]);
+#else
     GetBoundingBoxOfTriangle(bmin, bmax, mesh, indices[i]);
+#endif
 
     real3 quantizedBMin = (bmin - sceneMin) * sceneInvSize;
     real3 quantizedBMax = (bmax - sceneMin) * sceneInvSize;
@@ -263,6 +294,14 @@ public:
     int axis = axis_;
     real pos = pos_;
 
+#ifdef ENABLE_OSD_PATCH
+    real center = 0;
+    for (int j = 0; j < 16; ++j) {
+        int v = mesh_->regularPatchIndices[16 * i + j];
+        center += mesh_->vertices[3 * v + axis];
+    }
+    return (center < pos * 16.0);
+#else
     unsigned int i0 = mesh_->faces[3 * i + 0];
     unsigned int i1 = mesh_->faces[3 * i + 1];
     unsigned int i2 = mesh_->faces[3 * i + 2];
@@ -274,6 +313,7 @@ public:
     real center = p0[axis] + p1[axis] + p2[axis];
 
     return (center < pos * 3.0);
+#endif
   }
 
 private:
@@ -290,6 +330,30 @@ static void ComputeBoundingBox(real3 &bmin, real3 &bmax, real *vertices,
 
   size_t i = leftIndex;
   size_t idx = indices[i];
+
+#ifdef ENABLE_OSD_PATCH
+  bmin[0] = vertices[3 * faces[16 * idx + 0] + 0] - kEPS;
+  bmin[1] = vertices[3 * faces[16 * idx + 0] + 1] - kEPS;
+  bmin[2] = vertices[3 * faces[16 * idx + 0] + 2] - kEPS;
+  bmax[0] = vertices[3 * faces[16 * idx + 0] + 0] + kEPS;
+  bmax[1] = vertices[3 * faces[16 * idx + 0] + 1] + kEPS;
+  bmax[2] = vertices[3 * faces[16 * idx + 0] + 2] + kEPS;
+
+  for (i = leftIndex; i < rightIndex; i++) { // for each faces
+    size_t idx = indices[i];
+    for (int j = 0; j < 16; j++) { // for each face vertex
+      size_t fid = faces[16 * idx + j];
+      for (int k = 0; k < 3; k++) { // xyz
+        real minval = vertices[3 * fid + k] - kEPS;
+        real maxval = vertices[3 * fid + k] + kEPS;
+        if (bmin[k] > minval)
+          bmin[k] = minval;
+        if (bmax[k] < maxval)
+          bmax[k] = maxval;
+      }
+    }
+  }
+#else
   bmin[0] = vertices[3 * faces[3 * idx + 0] + 0] - kEPS;
   bmin[1] = vertices[3 * faces[3 * idx + 0] + 1] - kEPS;
   bmin[2] = vertices[3 * faces[3 * idx + 0] + 2] - kEPS;
@@ -312,6 +376,7 @@ static void ComputeBoundingBox(real3 &bmin, real3 &bmax, real *vertices,
       }
     }
   }
+#endif
 }
 
 //
@@ -331,8 +396,13 @@ size_t BVHAccel::BuildTree(const Mesh *mesh, unsigned int leftIdx,
   }
 
   real3 bmin, bmax;
+#ifdef ENABLE_OSD_PATCH
+  ComputeBoundingBox(bmin, bmax, mesh->vertices, mesh->regularPatchIndices,
+                     &indices_.at(0), leftIdx, rightIdx);
+#else
   ComputeBoundingBox(bmin, bmax, mesh->vertices, mesh->faces, &indices_.at(0),
                      leftIdx, rightIdx);
+#endif
 
   debug(" bmin = %f, %f, %f\n", bmin[0], bmin[1], bmin[2]);
   debug(" bmax = %f, %f, %f\n", bmax[0], bmax[1], bmax[2]);
@@ -450,9 +520,14 @@ bool BVHAccel::Build(const Mesh *mesh, const BVHBuildOptions &options) {
 
   assert(mesh);
 
-  size_t n = mesh->numFaces;
   trace("[BVHAccel] Input # of vertices = %lu\n", mesh->numVertices);
+#ifdef ENABLE_OSD_PATCH
+  size_t n = mesh->numRegularPatches;
+  trace("[BVHAccel] Input # of regular patches = %lu\n", mesh->numRegularPatches);
+#else
+  size_t n = mesh->numFaces;
   trace("[BVHAccel] Input # of faces    = %lu\n", mesh->numFaces);
+#endif
 
   //
   // 1. Create triangle indices(this will be permutated in BuildTree)
@@ -637,6 +712,22 @@ inline bool TriangleIsect(real &tInOut, real &uOut, real &vOut, const real3 &v0,
   return true;
 }
 
+#ifdef ENABLE_OSD_PATCH
+inline bool PatchIsect(real &tInOut, real &uOut, real &vOut, const real3 *cp,
+                       const real3 &rayOrg, const real3 &rayDir) {
+
+  // REPLACE ME, ototoi-san!
+
+  if (TriangleIsect(tInOut, uOut, vOut, cp[5], cp[6], cp[9], rayOrg, rayDir))
+      return true;
+
+  if (TriangleIsect(tInOut, uOut, vOut, cp[6], cp[9], cp[10], rayOrg, rayDir))
+      return true;
+
+  return false;
+}
+#endif
+
 bool TestLeafNode(Intersection &isect, // [inout]
                   const BVHNode &node, const std::vector<unsigned int> &indices,
                   const Mesh *mesh, const Ray &ray) {
@@ -660,6 +751,22 @@ bool TestLeafNode(Intersection &isect, // [inout]
   for (unsigned int i = 0; i < numTriangles; i++) {
     int faceIdx = indices[i + offset];
 
+#ifdef ENABLE_OSD_PATCH
+    real3 cp[16];
+    for (int j = 0; j < 16; ++j) {
+        int v = mesh->regularPatchIndices[16 * faceIdx + j];
+        cp[j] = real3(&mesh->vertices[3 * v]);
+    }
+    real u, v;
+    if (PatchIsect(t, u, v, cp, rayOrg, rayDir)) {
+      // Update isect state
+      isect.t = t;
+      isect.u = u;
+      isect.v = v;
+      isect.faceID = faceIdx;
+      hit = true;
+    }
+#else
     int f0 = mesh->faces[3 * faceIdx + 0];
     int f1 = mesh->faces[3 * faceIdx + 1];
     int f2 = mesh->faces[3 * faceIdx + 2];
@@ -686,18 +793,31 @@ bool TestLeafNode(Intersection &isect, // [inout]
       isect.faceID = faceIdx;
       hit = true;
     }
+#endif
   }
 
   return hit;
 }
 
 void BuildIntersection(Intersection &isect, const Mesh *mesh, Ray &ray) {
+
+#ifdef ENABLE_OSD_PATCH
+  // (TODO: normal should be derived from spline evaluation)
+
+  const unsigned int *indices = mesh->regularPatchIndices;
+  const real *vertices = mesh->vertices;
+
+  isect.f0 = indices[16 * isect.faceID + 5];
+  isect.f1 = indices[16 * isect.faceID + 6];
+  isect.f2 = indices[16 * isect.faceID + 9];
+#else
   // face index
   const unsigned int *faces = mesh->faces;
   const real *vertices = mesh->vertices;
   isect.f0 = faces[3 * isect.faceID + 0];
   isect.f1 = faces[3 * isect.faceID + 1];
   isect.f2 = faces[3 * isect.faceID + 2];
+#endif
 
   real3 p0, p1, p2;
   p0[0] = vertices[3 * isect.f0 + 0];

@@ -13,6 +13,9 @@ MeshLoader::LoadObj(
   Mesh& mesh,
   const char* filename)
 {
+#ifdef ENABLE_OSD_PATCH
+  return false;
+#else
   std::vector<tinyobj::shape_t> shapes;
 
   std::string err = tinyobj::LoadObj(shapes, filename);
@@ -75,6 +78,7 @@ MeshLoader::LoadObj(
   }
 
   return true;
+#endif
 }
 
 bool
@@ -116,8 +120,10 @@ MeshLoader::LoadESON(
   eson::Binary vertices_data = v.Get("vertices").Get<eson::Binary>();
   const float* vertices = reinterpret_cast<float*>(const_cast<uint8_t*>(vertices_data.ptr));
 
+#ifndef ENABLE_OSD_PATCH
   eson::Binary faces_data = v.Get("faces").Get<eson::Binary>();
   const int* faces = reinterpret_cast<int*>(const_cast<uint8_t*>(faces_data.ptr));
+#endif
 
   const float* facevarying_normals = NULL;
   if (v.Has("facevarying_normals")) {
@@ -137,8 +143,40 @@ MeshLoader::LoadESON(
     material_ids = reinterpret_cast<unsigned short*>(const_cast<uint8_t*>(material_ids_data.ptr));
   }
 
+#ifdef ENABLE_OSD_PATCH
+  int64_t num_regular_patches = v.Get("num_regular_patches").Get<int64_t>();
+  printf("# of regular patches   : %lld\n", num_regular_patches);
+
+  eson::Binary regular_indices_data = v.Get("regular_indices").Get<eson::Binary>();
+  const int* regular_indices = reinterpret_cast<int*>(const_cast<uint8_t*>(regular_indices_data.ptr));
+#endif
 
   // ESON -> Mesh
+#ifdef ENABLE_OSD_PATCH
+  mesh.numRegularPatches     = num_regular_patches;
+  mesh.numVertices  = num_vertices;
+  mesh.vertices = new real[num_vertices * 3];
+  mesh.regularPatchIndices    = new unsigned int[num_regular_patches * 16];
+  mesh.materialIDs = new unsigned int[num_regular_patches];
+
+  for (size_t i = 0; i < 3*num_vertices; i++) {
+    mesh.vertices[i] = vertices[i];
+  }
+
+  for (size_t i = 0; i < 16*num_regular_patches; i++) {
+    mesh.regularPatchIndices[i] = regular_indices[i];
+  }
+
+  if (material_ids) {
+    for (size_t i = 0; i < num_faces; i++) {
+      mesh.materialIDs[i] = material_ids[i];
+    }
+  } else {
+    for (size_t i = 0; i < num_faces; i++) {
+      mesh.materialIDs[i] = 0; // 0 = default material.
+    }
+  }
+#else
   mesh.numFaces     = num_faces;
   mesh.numVertices  = num_vertices;
   mesh.vertices = new real[num_vertices * 3];
@@ -162,6 +200,7 @@ MeshLoader::LoadESON(
       mesh.materialIDs[i] = 0; // 0 = default material.
     }
   }
+#endif
     
 
   return true;
