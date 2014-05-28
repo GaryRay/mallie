@@ -201,7 +201,12 @@ MeshLoader::LoadESON(
     }
   }
 #endif
-    
+
+  mesh.facevarying_normals = NULL;
+  mesh.facevarying_uvs = NULL;
+  mesh.facevarying_tangents = NULL;
+  mesh.facevarying_binormals = NULL;
+
 
   return true;
 }
