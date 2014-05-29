@@ -72,6 +72,7 @@ sources = {
    "texture.cc",
    "vcm.cc",
    "script_engine.cc",
+   "stb_image.c",
    "deps/TinyThread++-1.1/source/tinythread.cpp",
 }
 

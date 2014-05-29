@@ -6,6 +6,9 @@
 #include "scene.h"
 #include "timerutil.h"
 
+#define STBI_HEADER_FILE_ONLY
+#include "stb_image.c"
+
 namespace mallie {
 
 void Node::UpdateTransform() {}
