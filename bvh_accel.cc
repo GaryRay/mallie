@@ -86,22 +86,21 @@ static inline void GetBoundingBoxOfRegularPatch(real3 &bmin, real3 &bmax,
                                                 const Mesh *mesh,
                                                 unsigned int index) {
 
-  real3 p[16];
-  for (int i = 0; i < 16; ++i) {
-    unsigned int f = mesh->regularPatchIndices[16 * index + i];
-    p[i] = real3(&mesh->vertices[3 * f]);
+  {
+    real3 p(&mesh->bezierVertices[16*index*3]);
+    bmin = p;
+    bmax = p;
   }
-  bmin = p[0];
-  bmax = p[0];
 
   for (int i = 1; i < 16; i++) {
-    bmin[0] = std::min(bmin[0], p[i][0]);
-    bmin[1] = std::min(bmin[1], p[i][1]);
-    bmin[2] = std::min(bmin[2], p[i][2]);
+    real3 p(&mesh->bezierVertices[(16*index + i)*3]);
+    bmin[0] = std::min(bmin[0], p[0]);
+    bmin[1] = std::min(bmin[1], p[1]);
+    bmin[2] = std::min(bmin[2], p[2]);
 
-    bmax[0] = std::max(bmax[0], p[i][0]);
-    bmax[1] = std::max(bmax[1], p[i][1]);
-    bmax[2] = std::max(bmax[2], p[i][2]);
+    bmax[0] = std::max(bmax[0], p[0]);
+    bmax[1] = std::max(bmax[1], p[1]);
+    bmax[2] = std::max(bmax[2], p[2]);
   }
 }
 #endif
@@ -297,8 +296,7 @@ public:
 #ifdef ENABLE_OSD_PATCH
     real center = 0;
     for (int j = 0; j < 16; ++j) {
-        int v = mesh_->regularPatchIndices[16 * i + j];
-        center += mesh_->vertices[3 * v + axis];
+        center += mesh_->bezierVertices[3 * (16 * i + j) + axis];
     }
     return (center < pos * 16.0);
 #else
@@ -322,6 +320,39 @@ private:
   const Mesh *mesh_;
 };
 
+#ifdef ENABLE_OSD_PATCH
+static void ComputeBoundingBox(real3 &bmin, real3 &bmax,
+                               real *bezierVertices,
+                               unsigned int *indices,
+                               unsigned int leftIndex,
+                               unsigned int rightIndex) {
+  const real kEPS = std::numeric_limits<real>::epsilon() * 1024;
+
+  size_t i = leftIndex;
+  size_t idx = indices[i];
+
+  bmin[0] = bezierVertices[3 * 16 * idx + 0] - kEPS;
+  bmin[1] = bezierVertices[3 * 16 * idx + 1] - kEPS;
+  bmin[2] = bezierVertices[3 * 16 * idx + 2] - kEPS;
+  bmax[0] = bezierVertices[3 * 16 * idx + 0] + kEPS;
+  bmax[1] = bezierVertices[3 * 16 * idx + 1] + kEPS;
+  bmax[2] = bezierVertices[3 * 16 * idx + 2] + kEPS;
+
+  for (i = leftIndex; i < rightIndex; i++) { // for each faces
+    size_t idx = indices[i];
+    for (int j = 0; j < 16; j++) { // for each face vertex
+      for (int k = 0; k < 3; k++) { // xyz
+        real minval = bezierVertices[3 * (16 * idx + j) + k] - kEPS;
+        real maxval = bezierVertices[3 * (16 * idx + j) + k] + kEPS;
+        if (bmin[k] > minval)
+          bmin[k] = minval;
+        if (bmax[k] < maxval)
+          bmax[k] = maxval;
+      }
+    }
+  }
+}
+#else
 static void ComputeBoundingBox(real3 &bmin, real3 &bmax, real *vertices,
                                unsigned int *faces, unsigned int *indices,
                                unsigned int leftIndex,
@@ -331,29 +362,6 @@ static void ComputeBoundingBox(real3 &bmin, real3 &bmax, real *vertices,
   size_t i = leftIndex;
   size_t idx = indices[i];
 
-#ifdef ENABLE_OSD_PATCH
-  bmin[0] = vertices[3 * faces[16 * idx + 0] + 0] - kEPS;
-  bmin[1] = vertices[3 * faces[16 * idx + 0] + 1] - kEPS;
-  bmin[2] = vertices[3 * faces[16 * idx + 0] + 2] - kEPS;
-  bmax[0] = vertices[3 * faces[16 * idx + 0] + 0] + kEPS;
-  bmax[1] = vertices[3 * faces[16 * idx + 0] + 1] + kEPS;
-  bmax[2] = vertices[3 * faces[16 * idx + 0] + 2] + kEPS;
-
-  for (i = leftIndex; i < rightIndex; i++) { // for each faces
-    size_t idx = indices[i];
-    for (int j = 0; j < 16; j++) { // for each face vertex
-      size_t fid = faces[16 * idx + j];
-      for (int k = 0; k < 3; k++) { // xyz
-        real minval = vertices[3 * fid + k] - kEPS;
-        real maxval = vertices[3 * fid + k] + kEPS;
-        if (bmin[k] > minval)
-          bmin[k] = minval;
-        if (bmax[k] < maxval)
-          bmax[k] = maxval;
-      }
-    }
-  }
-#else
   bmin[0] = vertices[3 * faces[3 * idx + 0] + 0] - kEPS;
   bmin[1] = vertices[3 * faces[3 * idx + 0] + 1] - kEPS;
   bmin[2] = vertices[3 * faces[3 * idx + 0] + 2] - kEPS;
@@ -376,8 +384,8 @@ static void ComputeBoundingBox(real3 &bmin, real3 &bmax, real *vertices,
       }
     }
   }
-#endif
 }
+#endif
 
 //
 // --
@@ -397,7 +405,7 @@ size_t BVHAccel::BuildTree(const Mesh *mesh, unsigned int leftIdx,
 
   real3 bmin, bmax;
 #ifdef ENABLE_OSD_PATCH
-  ComputeBoundingBox(bmin, bmax, mesh->vertices, mesh->regularPatchIndices,
+  ComputeBoundingBox(bmin, bmax, mesh->bezierVertices,
                      &indices_.at(0), leftIdx, rightIdx);
 #else
   ComputeBoundingBox(bmin, bmax, mesh->vertices, mesh->faces, &indices_.at(0),
@@ -713,15 +721,20 @@ inline bool TriangleIsect(real &tInOut, real &uOut, real &vOut, const real3 &v0,
 }
 
 #ifdef ENABLE_OSD_PATCH
-inline bool PatchIsect(real &tInOut, real &uOut, real &vOut, const real3 *cp,
+inline bool PatchIsect(real &tInOut, real &uOut, real &vOut,
+                       real *bezierVerts,
                        const real3 &rayOrg, const real3 &rayDir) {
 
   // REPLACE ME, ototoi-san!
+  real3 cp0(&bezierVerts[0]);
+  real3 cp1(&bezierVerts[3*3]);
+  real3 cp2(&bezierVerts[12*3]);
+  real3 cp3(&bezierVerts[15*3]);
 
-  if (TriangleIsect(tInOut, uOut, vOut, cp[5], cp[6], cp[9], rayOrg, rayDir))
+  if (TriangleIsect(tInOut, uOut, vOut, cp0, cp1, cp2, rayOrg, rayDir))
       return true;
 
-  if (TriangleIsect(tInOut, uOut, vOut, cp[6], cp[9], cp[10], rayOrg, rayDir))
+  if (TriangleIsect(tInOut, uOut, vOut, cp2, cp1, cp3, rayOrg, rayDir))
       return true;
 
   return false;
@@ -752,13 +765,9 @@ bool TestLeafNode(Intersection &isect, // [inout]
     int faceIdx = indices[i + offset];
 
 #ifdef ENABLE_OSD_PATCH
-    real3 cp[16];
-    for (int j = 0; j < 16; ++j) {
-        int v = mesh->regularPatchIndices[16 * faceIdx + j];
-        cp[j] = real3(&mesh->vertices[3 * v]);
-    }
+    real *bv = &mesh->bezierVertices[faceIdx * 16 * 3];
     real u, v;
-    if (PatchIsect(t, u, v, cp, rayOrg, rayDir)) {
+    if (PatchIsect(t, u, v, bv, rayOrg, rayDir)) {
       // Update isect state
       isect.t = t;
       isect.u = u;

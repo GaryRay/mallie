@@ -22,6 +22,7 @@ typedef struct {
 #ifdef ENABLE_OSD_PATCH
   size_t numRegularPatches;
   unsigned int *regularPatchIndices; /// 16 x numRegularPatches
+  real *bezierVertices;        /// [xyz] * 16 * numRegularPatches
 #endif
 
 } Mesh;

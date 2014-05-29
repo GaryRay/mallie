@@ -179,6 +179,7 @@ MeshLoader::LoadESON(
   mesh.vertices = new real[num_vertices * 3];
   mesh.regularPatchIndices    = new unsigned int[num_regular_patches * 16];
   mesh.materialIDs = new unsigned int[num_regular_patches];
+  mesh.bezierVertices = new real[num_regular_patches * 16 * 3];
 
   for (size_t i = 0; i < 3*num_vertices; i++) {
     mesh.vertices[i] = vertices[i];
@@ -186,6 +187,41 @@ MeshLoader::LoadESON(
 
   for (size_t i = 0; i < 16*num_regular_patches; i++) {
     mesh.regularPatchIndices[i] = regular_indices[i];
+  }
+
+  // convert bspline to bezier
+  const float Q[4][4] = {
+      { 1.f/6.f, 4.f/6.f, 1.f/6.f, 0.f },
+      { 0.f,     4.f/6.f, 2.f/6.f, 0.f },
+      { 0.f,     2.f/6.f, 4.f/6.f, 0.f },
+      { 0.f,     1.f/6.f, 4.f/6.f, 1.f/6.f } };
+
+  real *pbv = mesh.bezierVertices;
+  for (size_t i = 0; i < num_regular_patches; i++) {
+      for (int j = 0; j < 4; j++) {
+          for (int k = 0; k < 4; k++) {
+              real3 H[4];
+              for (int l = 0; l < 4; l++) {
+                  H[l][0] = H[l][1] = H[l][2] = 0;
+                  for (int m = 0; m < 4; m++) {
+                      int vert = mesh.regularPatchIndices[i*16 + l*4 + m];
+                      H[l][0] += Q[j][m] * mesh.vertices[vert*3 + 0];
+                      H[l][1] += Q[j][m] * mesh.vertices[vert*3 + 1];
+                      H[l][2] += Q[j][m] * mesh.vertices[vert*3 + 2];
+                  }
+              }
+              real3 cp;
+              cp[0] = cp[1] = cp[2] = 0;
+              for (int m = 0; m < 4; m++) {
+                  cp[0] += Q[k][m] * H[m][0];
+                  cp[1] += Q[k][m] * H[m][1];
+                  cp[2] += Q[k][m] * H[m][2];
+              }
+              *pbv++ = cp[0];
+              *pbv++ = cp[1];
+              *pbv++ = cp[2];
+          }
+      }
   }
 
   if (material_ids) {
