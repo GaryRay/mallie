@@ -47,6 +47,7 @@ Tested on VS2013.
 
     --with-sdl        : Enable SDL(GUI)
     --with-openmp     : Enable OpenMP
+    --with-osd-patch  : Enable OSD patch(tentative)
 
 ### Usage
 

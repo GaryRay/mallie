@@ -111,16 +111,37 @@ MeshLoader::LoadESON(
 
   //std::cout << "[LoadESON] # of shapes in .obj : " << shapes.size() << std::endl;
 
-
+  if (!v.Has("num_vertices")) {
+    fprintf(stderr, "Mallie:error\tmsg:\"num_vertices\" field not found.\n");
+    return false;
+  }
   int64_t num_vertices = v.Get("num_vertices").Get<int64_t>();
-  int64_t num_faces = v.Get("num_faces").Get<int64_t>();
   printf("# of vertices: %lld\n", num_vertices);
+
+#ifndef ENABLE_OSD_PATCH
+  if (!v.Has("num_faces")) {
+    fprintf(stderr, "Mallie:error\tmsg:\"num_faces\" field not found.\n");
+    return false;
+  }
+
+  int64_t num_faces = v.Get("num_faces").Get<int64_t>();
   printf("# of faces   : %lld\n", num_faces);
+#endif
+
+  if (!v.Has("vertices")) {
+    fprintf(stderr, "Mallie:error\tmsg:\"vertices\" field not found.\n");
+    return false;
+  }
 
   eson::Binary vertices_data = v.Get("vertices").Get<eson::Binary>();
   const float* vertices = reinterpret_cast<float*>(const_cast<uint8_t*>(vertices_data.ptr));
 
 #ifndef ENABLE_OSD_PATCH
+  if (!v.Has("faces")) {
+    fprintf(stderr, "Mallie:error\tmsg:\"faces\" field not found.\n");
+    return false;
+  }
+
   eson::Binary faces_data = v.Get("faces").Get<eson::Binary>();
   const int* faces = reinterpret_cast<int*>(const_cast<uint8_t*>(faces_data.ptr));
 #endif
@@ -168,13 +189,14 @@ MeshLoader::LoadESON(
   }
 
   if (material_ids) {
-    for (size_t i = 0; i < num_faces; i++) {
-      mesh.materialIDs[i] = material_ids[i];
-    }
+    assert(0); // @todo
+    //for (size_t i = 0; i < num_faces; i++) {
+    //  mesh.materialIDs[i] = material_ids[i];
+    //}
   } else {
-    for (size_t i = 0; i < num_faces; i++) {
-      mesh.materialIDs[i] = 0; // 0 = default material.
-    }
+    //for (size_t i = 0; i < num_faces; i++) {
+    //  mesh.materialIDs[i] = 0; // 0 = default material.
+    //}
   }
 #else
   mesh.numFaces     = num_faces;

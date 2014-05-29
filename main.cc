@@ -99,7 +99,6 @@ bool InitScene(mallie::Scene &scene, mallie::RenderConfig &config) {
 
 bool LoadJSONConfig(mallie::RenderConfig &config, // [out]
                     const std::string &filename) {
-#if 1
   { // file check
     std::ifstream is(filename.c_str());
 
@@ -111,6 +110,7 @@ bool LoadJSONConfig(mallie::RenderConfig &config, // [out]
 
   JSON_Value *root = json_parse_file(filename.c_str());
   if (json_value_get_type(root) != JSONObject) {
+    std::cerr << "Not a json object: " << filename << std::endl;
     return false;
   }
 
@@ -194,85 +194,9 @@ bool LoadJSONConfig(mallie::RenderConfig &config, // [out]
   json_value_free(root);
 
   return true;
-
-#else
-  std::ifstream is(filename.c_str());
-
-  if (!is) {
-    std::cerr << "File not found: " << filename << std::endl;
-    return false;
-  }
-
-  picojson::value v;
-  std::string err = picojson::parse(v, is);
-  if (!err.empty()) {
-    std::cout << err << std::endl;
-    return false;
-  }
-
-  if (v.get("obj_filename").is<std::string>()) {
-    config.obj_filename = v.get("obj_filename").get<std::string>();
-  }
-
-  if (v.get("material_filename").is<std::string>()) {
-    config.material_filename = v.get("material_filename").get<std::string>();
-  }
-
-  if (v.get("scene_scale").is<double>()) {
-    config.scene_scale = v.get("scene_scale").get<double>();
-  }
-
-  if (v.get("plane").is<bool>()) {
-    config.plane = v.get("plane").get<bool>();
-  }
-
-  if (v.get("num_passes").is<double>()) {
-    config.num_passes = (int)v.get("num_passes").get<double>();
-  }
-
-  if (v.get("num_photons").is<double>()) {
-    config.num_photons = (int)v.get("num_photons").get<double>();
-  }
-
-  if (v.get("eye").is<picojson::array>()) {
-    assert(v.get("eye").get<picojson::array>().size() == 3);
-    config.eye[0] = v.get("eye").get(0).get<double>();
-    config.eye[1] = v.get("eye").get(1).get<double>();
-    config.eye[2] = v.get("eye").get(2).get<double>();
-  }
-
-  if (v.get("up").is<picojson::array>()) {
-    assert(v.get("up").get<picojson::array>().size() == 3);
-    config.up[0] = v.get("up").get(0).get<double>();
-    config.up[1] = v.get("up").get(1).get<double>();
-    config.up[2] = v.get("up").get(2).get<double>();
-  }
-
-  if (v.get("lookat").is<picojson::array>()) {
-    assert(v.get("lookat").get<picojson::array>().size() == 3);
-    config.lookat[0] = v.get("lookat").get(0).get<double>();
-    config.lookat[1] = v.get("lookat").get(1).get<double>();
-    config.lookat[2] = v.get("lookat").get(2).get<double>();
-  }
-
-  if (v.get("fov").is<double>()) {
-    config.fov = v.get("fov").get<double>();
-  }
-
-  if (v.get("resolution").is<picojson::array>()) {
-    assert(v.get("resolution").get<picojson::array>().size() == 2);
-    config.width = v.get("resolution").get(0).get<double>();
-    config.height = v.get("resolution").get(1).get<double>();
-  }
-
-  if (v.get("num_passes").is<double>()) {
-    config.num_passes = (int)v.get("num_passes").get<double>();
-  }
-
-  return true;
-#endif
 }
-}
+
+} // namespace
 
 int main(int argc, char **argv) {
 
@@ -284,7 +208,7 @@ int main(int argc, char **argv) {
   }
 
 #ifdef _OPENMP
-  printf("Mallie:info\tOpenMP Detected. Max # of threads = %d\n",
+  printf("Mallie:info\tmsg:OpenMP Detected. Max # of threads = %d\n",
          omp_get_max_threads());
 #endif
 
@@ -294,24 +218,28 @@ int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &nnodes);
-  printf("Mallie:info\tMPI      : %d / %d\n", rank, nnodes);
+  printf("Mallie:info\tmsg:MPI      %d / %d\n", rank, nnodes);
 #endif
-  printf("Mallie:info\tVersion  : %s\n", MALLIE_VERSION);
+  printf("Mallie:info\tmsg:Version  %s\n", MALLIE_VERSION);
+
+#ifdef ENABLE_OSD_PATCH
+  printf("Mallie:info\tmsg:Enable OSD patch\n");
+#endif
 
   if (sizeof(real) == 4) {
-    printf("Mallie:info\tPrecision: 32bit float\n");
+    printf("Mallie:info\tmsg:Precision 32bit float\n");
   } else {
-    printf("Mallie:info\tPrecision: 64bit double\n");
+    printf("Mallie:info\tmsg:Precision 64bit double\n");
   }
 
-  printf("Mallie:info\t# of CPUs: %d\n", GetNumCPUs());
+  printf("Mallie:info\tmsg:# of CPUs %d\n", GetNumCPUs());
 
   // Load config
   std::string config_filename("config.json");
   if (argc > 1) {
     config_filename = std::string(argv[1]);
   }
-  printf("Mallie:info\tConfig file: %s\n", config_filename.c_str());
+  printf("Mallie:info\tmsg:Config file %s\n", config_filename.c_str());
   mallie::RenderConfig config;
   bool ret = LoadJSONConfig(config, config_filename);
   assert(ret);
@@ -325,7 +253,7 @@ int main(int argc, char **argv) {
 
   mallie::timerutil t;
   t.start();
-  printf("Mallie:info\tBegin\n");
+  printf("Mallie:info\tmsg:Begin\n");
 
 #ifdef ENABLE_SDL
   // SDL_Init() must be defined in main()
@@ -337,8 +265,8 @@ int main(int argc, char **argv) {
 #endif
 
   t.end();
-  printf("Mallie:info\tEnd\n");
-  printf("Mallie:info\tElapsed: %d sec(s)\n", (int)t.sec());
+  printf("Mallie:info\tmsg:End\n");
+  printf("Mallie:info\tmsg:Elapsed: %d sec(s)\n", (int)t.sec());
   fflush(stdout);
 
 #ifdef WITH_MPI

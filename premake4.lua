@@ -4,6 +4,13 @@ newoption {
    description = "Build unit test."
 }
 
+-- OSD patch eson
+newoption {
+   trigger     = "with-osd-patch",
+   description = "Use OSD patch format."
+}
+
+
 -- ARM target
 newoption {
    trigger     = "arm",
@@ -115,6 +122,10 @@ solution "MallieSolution"
          "deps/TinyThread++-1.1/source/",
          "deps/tinyjs/",
       }
+
+      if _OPTIONS['with-osd-patch'] then
+         defines { 'ENABLE_OSD_PATCH' }
+      end
 
       -- MacOSX. Guess we use gcc.
       configuration { "macosx", "gmake" }
