@@ -91,6 +91,12 @@ gtest_sources = {
    "deps/gtest-1.7.0/src/gtest_main.cc"
 }
 
+bezier_sources = {
+   "bezier/bezier.cc",
+   "bezier/bilinear_patch_intersection.cc",
+   --"bezier/bezier_patch_intersection.cc",
+}
+
 
 newaction {
    trigger     = "install",
@@ -115,13 +121,14 @@ solution "MallieSolution"
       kind "ConsoleApp"
       language "C++"
 
-      files { sources, tinyjs_sources }
+      files { sources, tinyjs_sources, bezier_sources }
 
       includedirs {
          "./",
          "deps/parson/",
          "deps/TinyThread++-1.1/source/",
          "deps/tinyjs/",
+         "bezier/",
       }
 
       if _OPTIONS['with-osd-patch'] then
