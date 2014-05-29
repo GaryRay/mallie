@@ -32,7 +32,7 @@
 
 #include "vector3.h"
 
-namespace glrs {
+namespace mallie {
 
 class vector3i {
 public:

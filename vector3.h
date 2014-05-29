@@ -8,7 +8,7 @@
 #include <sstream>
 #include <cassert>
 
-namespace glrs {
+namespace mallie {
 
 /**
   * @class vector3

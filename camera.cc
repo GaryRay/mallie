@@ -162,7 +162,6 @@ void Camera::BuildCameraFrame(double origin[3], double corner[3], double u[3],
   }
 #endif
 
-  // glrsSetCamera(&eye1[0], &lookat1[0], &up1[0], 45.0f);
   // fprintf(stderr, "eye: %f %f %f\n", eye1[0], eye1[1], eye1[2]);
   // fprintf(stderr, "lookat: %f %f %f\n", lookat1[0], lookat1[1], lookat1[2]);
   // fprintf(stderr, "up: %f %f %f\n", up1[0], up1[1], up1[2]);
