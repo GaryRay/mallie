@@ -464,7 +464,7 @@ size_t BVHAccel::BuildTree(const Mesh *mesh, unsigned int leftIdx,
   // Try all 3 axis until good cut position avaiable.
   unsigned int midIdx;
   int cutAxis = minCutAxis;
-  for (int axisTry = 0; axisTry < 1; axisTry++) {
+  for (int axisTry = 0; axisTry < 3; axisTry++) {
 
     unsigned int *begin = &indices_[leftIdx];
     unsigned int *end = &indices_[rightIdx];
@@ -565,6 +565,7 @@ bool BVHAccel::Build(const Mesh *mesh, const BVHBuildOptions &options) {
 }
 
 bool BVHAccel::Dump(const char *filename) {
+  // @todo { Dump as ESON }
   FILE *fp = fopen(filename, "wb");
   if (!fp) {
     fprintf(stderr, "[BVHAccel] Cannot write a file: %s\n", filename);
