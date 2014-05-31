@@ -2,9 +2,12 @@
 #define __MALLIE_SCENE_H__
 
 #include <cassert>
+#include <string>
 
 #include "bvh_accel.h"
 #include "material.h"
+
+#include "bezier/patch_accel.h"
 
 namespace mallie {
 
@@ -37,7 +40,7 @@ private:
 //< Scene class. Usually only one instance of Scene class in rendering.
 class Scene {
 public:
-  Scene() {};
+  Scene();
   ~Scene();
 
   // Fixme.
@@ -59,7 +62,10 @@ protected:
   BVHAccel accel_;
   Mesh mesh_;
   std::vector<Material> materials_;
+
+  PatchAccel* patch_accel_;
 };
+
 }
 
 #endif // __MALLIE_SCENE_H__

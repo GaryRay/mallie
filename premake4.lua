@@ -94,7 +94,11 @@ gtest_sources = {
 bezier_sources = {
    "bezier/bezier.cc",
    "bezier/bilinear_patch_intersection.cc",
-   --"bezier/bezier_patch_intersection.cc",
+   "bezier/bezier_patch_intersection.cc",
+   "bezier/bvh_composite_intersection.cc",
+   "bezier/patch_accel.cc",
+
+   "importers/patch_loader.cc",
 }
 
 

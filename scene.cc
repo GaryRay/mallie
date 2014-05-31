@@ -1,8 +1,10 @@
 #include <cassert>
+#include <string>
 
 #include "importers/tiny_obj_loader.h"
 #include "importers/eson.h"
 #include "importers/mesh_loader.h"
+#include "importers/patch_loader.h"
 #include "scene.h"
 #include "timerutil.h"
 
@@ -13,6 +15,11 @@ namespace mallie {
 
 void Node::UpdateTransform() {}
 
+Scene::Scene()
+{
+  patch_accel_ = NULL;
+}
+
 Scene::~Scene() {
   delete[] mesh_.vertices;
 #ifdef ENABLE_OSD_PATCH
@@ -22,6 +29,8 @@ Scene::~Scene() {
   delete[] mesh_.faces;
 #endif
   delete[] mesh_.materialIDs;
+
+  if(patch_accel_)delete patch_accel_;
 }
 
 bool Scene::Init(const std::string &objFilename,
@@ -29,7 +38,7 @@ bool Scene::Init(const std::string &objFilename,
                  const std::string &materialFilename, double sceneScale) {
 
   bool ret = false;
-
+#if 1
   if (!objFilename.empty()) {
     ret = MeshLoader::LoadObj(mesh_, objFilename.c_str());
 
@@ -42,7 +51,9 @@ bool Scene::Init(const std::string &objFilename,
              objFilename.c_str());
     }
   } else if (!esonFilename.empty()) {
+
     ret = MeshLoader::LoadESON(mesh_, esonFilename.c_str());
+
     if (!ret) {
       printf("Mallie:err\tmsg:Failed to load .eson file [ %s ]\n",
              esonFilename.c_str());
@@ -85,25 +96,61 @@ bool Scene::Init(const std::string &objFilename,
   printf("    # of leaf   nodes: %d\n", stats.numLeafNodes);
   printf("    # of branch nodes: %d\n", stats.numBranchNodes);
   printf("  Max tree depth   : %d\n", stats.maxTreeDepth);
+#else
 
+//load patch
+  std::vector< bezier_patch<vector3> > patch_array;
+  ret = PatchLoader::LoadESON(patch_array, esonFilename.c_str());
+
+  if (!ret) {
+    printf("Mallie:err\tmsg:Failed to load .eson file [ %s ]\n",
+           esonFilename.c_str());
+    return false;
+  } else {
+    printf("Mallie:info\tmsg:Success to load .eson file [ %s ]\n",
+           esonFilename.c_str());
+  }
+
+  if (ret == false) {
+    printf("Mallie:err\tmsg:Failed to load patch\n");
+    return ret;
+  }
+
+  patch_accel_ = new PatchAccel(patch_array);
+
+#endif
   return true;
 }
 
 bool Scene::Trace(Intersection &isect, Ray &ray) {
-  return accel_.Traverse(isect, &mesh_, ray);
+  if(patch_accel_==NULL)
+  {
+    return accel_.Traverse(isect, &mesh_, ray);
+  }
+  else
+  {
+    return patch_accel_->Traverse(isect, ray);
+  }
 }
 
 void Scene::BoundingBox(real3 &bmin, real3 &bmax) {
-  const std::vector<BVHNode> &nodes = accel_.GetNodes();
-  assert(nodes.size() > 0);
+  if(patch_accel_==NULL)
+  {
+    const std::vector<BVHNode> &nodes = accel_.GetNodes();
+    assert(nodes.size() > 0);
 
-  bmin[0] = nodes[0].bmin[0];
-  bmin[1] = nodes[0].bmin[1];
-  bmin[2] = nodes[0].bmin[2];
+    bmin[0] = nodes[0].bmin[0];
+    bmin[1] = nodes[0].bmin[1];
+    bmin[2] = nodes[0].bmin[2];
 
-  bmax[0] = nodes[0].bmax[0];
-  bmax[1] = nodes[0].bmax[1];
-  bmax[2] = nodes[0].bmax[2];
+    bmax[0] = nodes[0].bmax[0];
+    bmax[1] = nodes[0].bmax[1];
+    bmax[2] = nodes[0].bmax[2];
+  }
+  else
+  {
+     patch_accel_->GetBoundingBox(bmin, bmax);
+  }
 }
 
 real3 Scene::GetBackgroundRadiance(real3 &dir) {

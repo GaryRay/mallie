@@ -13,6 +13,13 @@
 
 #include "bvh_accel.h"
 
+#ifdef ENABLE_OSD_PATCH
+#include "bezier/bezier_patch.hpp"
+#include "bezier/bezier_patch_intersection.h"
+#include <memory>
+#endif
+
+
 #define ENABLE_TRACE_PRINT (0)
 #define ENABLE_DEBUG_PRINT (0)
 
@@ -721,25 +728,72 @@ inline bool TriangleIsect(real &tInOut, real &uOut, real &vOut, const real3 &v0,
 }
 
 #ifdef ENABLE_OSD_PATCH
-inline bool PatchIsect(real &tInOut, real &uOut, real &vOut,
+inline bool PatchIsect(Intersection &isect,
                        real *bezierVerts,
-                       const real3 &rayOrg, const real3 &rayDir) {
+                       const Ray &ray) {
 
   // REPLACE ME, ototoi-san!
+#if 0
+  real3 rayOrg;
+  rayOrg[0] = ray.org[0];
+  rayOrg[1] = ray.org[1];
+  rayOrg[2] = ray.org[2];
+
+  real3 rayDir;
+  rayDir[0] = ray.dir[0];
+  rayDir[1] = ray.dir[1];
+  rayDir[2] = ray.dir[2];
+
   real3 cp0(&bezierVerts[0]);
   real3 cp1(&bezierVerts[3*3]);
   real3 cp2(&bezierVerts[12*3]);
   real3 cp3(&bezierVerts[15*3]);
 
-  if (TriangleIsect(tInOut, uOut, vOut, cp0, cp1, cp2, rayOrg, rayDir))
-      return true;
+  real t = isect.t;
+  real u;
+  real v;
 
-  if (TriangleIsect(tInOut, uOut, vOut, cp2, cp1, cp3, rayOrg, rayDir))
+  if (TriangleIsect(t,u,v, cp0, cp1, cp2, rayOrg, rayDir))
+  {
+    isect.t=t;
+    isect.u=u;
+    isect.v=v;
       return true;
+  }
 
+  if (TriangleIsect(t,u,v, cp2, cp1, cp3, rayOrg, rayDir))
+  {
+      isect.t=t;
+      isect.u=u;
+      isect.v=v;
+      return true;
+  }
+#else
+    using namespace mallie;
+    std::vector<vector3> v(16);
+    for(int i = 0;i<16;i++){
+      v[i] = vector3(bezierVerts[3*i+0],bezierVerts[3*i+1],bezierVerts[3*i+2]);
+    }
+    
+    bezier_patch_intersection bzi(bezier_patch<vector3>(4,4,v));
+
+    real t = isect.t;
+    if(bzi.test(&isect, ray, t))
+    {
+      return true;
+    }
+    
+#endif
   return false;
 }
 #endif
+
+static
+real Inverse(real x)
+{
+  if(fabs(x)<1e-16)return 1e+16;
+  return real(1)/x;
+}
 
 bool TestLeafNode(Intersection &isect, // [inout]
                   const BVHNode &node, const std::vector<unsigned int> &indices,
@@ -761,17 +815,20 @@ bool TestLeafNode(Intersection &isect, // [inout]
   rayDir[1] = ray.dir[1];
   rayDir[2] = ray.dir[2];
 
+  Ray tr = ray;
+  tr.invDir = real3(Inverse(rayDir[0]),Inverse(rayDir[1]),Inverse(rayDir[2]));
+  for(int i=0;i<3;i++)
+  {
+    tr.dirSign[i] = (rayDir[i]<0)?1:0;
+  }
+
   for (unsigned int i = 0; i < numTriangles; i++) {
     int faceIdx = indices[i + offset];
 
 #ifdef ENABLE_OSD_PATCH
     real *bv = &mesh->bezierVertices[faceIdx * 16 * 3];
-    real u, v;
-    if (PatchIsect(t, u, v, bv, rayOrg, rayDir)) {
+    if (PatchIsect(isect, bv, tr)) {
       // Update isect state
-      isect.t = t;
-      isect.u = u;
-      isect.v = v;
       isect.faceID = faceIdx;
       hit = true;
     }
@@ -810,8 +867,11 @@ bool TestLeafNode(Intersection &isect, // [inout]
 
 void BuildIntersection(Intersection &isect, const Mesh *mesh, Ray &ray) {
 
+
 #ifdef ENABLE_OSD_PATCH
   // (TODO: normal should be derived from spline evaluation)
+  //
+  
 
   const unsigned int *indices = mesh->regularPatchIndices;
   const real *vertices = mesh->vertices;
@@ -819,6 +879,9 @@ void BuildIntersection(Intersection &isect, const Mesh *mesh, Ray &ray) {
   isect.f0 = indices[16 * isect.faceID + 5];
   isect.f1 = indices[16 * isect.faceID + 6];
   isect.f2 = indices[16 * isect.faceID + 9];
+
+  //iranai YO!
+  return;
 #else
   // face index
   const unsigned int *faces = mesh->faces;

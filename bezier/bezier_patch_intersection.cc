@@ -62,7 +62,7 @@ static const int  MAX_LEVEL = 10;
     static
     inline vector3x Conv(const real3& r)
     {
-        return vector3x(r.x, r.y, r.z); 
+        return vector3x(r[0], r[1], r[2]); 
     }
     
     static
@@ -70,7 +70,6 @@ static const int  MAX_LEVEL = 10;
     {
         return real3(r[0], r[1], r[2]); 
     }
-
 
     
     struct range_AABB{
@@ -83,6 +82,7 @@ static const int  MAX_LEVEL = 10;
         //int phase = r.phase();
         int sign[3] = {r.dirSign[0],r.dirSign[1],r.dirSign[2]};
         vector3 box[2] = {min,max};
+
         vector3 org  = Conv(r.org);
         vector3 idir = Conv(r.invDir);
 
@@ -133,22 +133,23 @@ static const int  MAX_LEVEL = 10;
         x[plane] = 1;
         vector3 y = normalize(cross(z,x));
         x = cross(y,z);
+
         mat = matrix3(x[0],x[1],x[2],y[0],y[1],y[2],z[0],z[1],z[2]);
     }
     
     static 
     void getZAlign(matrix4& mat, const Ray &r)
     {
-        vector3 org = Conv(r.org);
-        vector3 dir = Conv(r.dir);
-        
-        vector3 z = dir;
+        vector3x org = Conv(r.org);
+        vector3x dir = Conv(r.dir);
+
+        vector3x z = dir;
         int plane = 0;
         if(fabs(z[1])<fabs(z[plane]))plane = 1;
         if(fabs(z[2])<fabs(z[plane]))plane = 2;
-        vector3 x = vector3(0,0,0);
+        vector3x x = vector3(0,0,0);
         x[plane] = 1;
-        vector3 y = normalize(cross(z,x));
+        vector3x y = normalize(cross(z,x));
         x = cross(y,z);
         matrix4 rot = matrix4(
                               x[0],x[1],x[2],0,
@@ -162,7 +163,6 @@ static const int  MAX_LEVEL = 10;
                               0,0,1,-org[2],
                               0,0,0,1
                               );
-        
         mat = rot*trs;
     }
     
@@ -1360,6 +1360,7 @@ static const int  MAX_LEVEL = 10;
         vector3 min;
         vector3 max;
         get_minmax(min, max, patch);
+
         if(0<min[0] || max[0]<0)return false;//x
         if(0<min[1] || max[1]<0)return false;//y
         if(max[2]<zmin || zmax<min[2])return false;//z
@@ -1413,16 +1414,8 @@ static const int  MAX_LEVEL = 10;
         vrange_[0] = v0;
         vrange_[1] = v1;
         get_minmax(min_,max_, patch);
-        
-        vector3 wid = max_ - min_;
-		int plane=0;
-		if(wid[1]>wid[plane])plane=1;
-		if(wid[2]>wid[plane])plane=2;
-
-		EPSILON = std::max<float>(EPSILON, wid[plane]*0.01f);
-        
-        min_ += -vector3(EPSILON,EPSILON,EPSILON);
-        max_ += +vector3(EPSILON,EPSILON,EPSILON);
+        min_ += -vector3(2*EPS,2*EPS,2*EPS);
+        max_ += +vector3(2*EPS,2*EPS,2*EPS);
         
         eps_ = get_eps(min_,max_);
     }
@@ -1443,11 +1436,11 @@ static const int  MAX_LEVEL = 10;
 		int nv = patch_.get_nv();
 
 		if(nu*nv<=16){
-            bezier_patch<vector3x> patch(patch_);
+            static_bezier_patch<vector3x,16> patch(patch_);
 			patch.transform(mat);
 			return test_bezier_patch(patch, tmin, tmax, eps_);
 		}else{
-			bezier_patch<vector3x> patch(patch_);
+			static_bezier_patch<vector3x,16> patch(patch_);
 			patch.transform(mat);
 			return test_bezier_patch(patch, tmin, tmax, eps_);
 		}
@@ -1464,16 +1457,18 @@ static const int  MAX_LEVEL = 10;
 		bool bRet = false;
 		uvt_info uvt;
 		if(nu*nv<=16){
-            bezier_patch<vector3x> patch(patch_);
+            static_bezier_patch<vector3x,16> patch(patch_);
 			patch.transform(mat);
 			bRet = test_bezier_patch(&uvt, patch, tmin, tmax, eps_);
 		}else{
-			bezier_patch<vector3x> patch(patch_);
+			static_bezier_patch<vector3x,16> patch(patch_);
 			patch.transform(mat);
 			bRet = test_bezier_patch(&uvt, patch, tmin, tmax, eps_);
 		}
+
         if(bRet)
         {
+            
             float t = uvt.t;
             float u = uvt.u;
             float v = uvt.v;      
@@ -1484,16 +1479,13 @@ static const int  MAX_LEVEL = 10;
             info->position = Conv(Conv(r.org) + t*Conv(r.dir));
             info->u = u;
             info->v = v;
-            {     
-		        float u = uvt.u;
-		        float v = uvt.v;
-		
+            {
 				//u = std::max<float>(0.01, std::min<float>(u,0.99));
 				//v = std::max<float>(0.01, std::min<float>(v,0.99));
 		
 		        vector3 U = normalize(patch_.evaluate_deriv_u(u,v));
 		        vector3 V = normalize(patch_.evaluate_deriv_v(u,v));
-		        vector3 N = cross(U,V);
+		        vector3 N = normalize(cross(U,V));
 		        info->normal = Conv(N);
 		        info->geometricNormal = Conv(N);
 		        info->tangent  = Conv(U);
@@ -1523,6 +1515,7 @@ static const int  MAX_LEVEL = 10;
     {
         range_AABB rng;
         if(intersectAABB(&rng, min_, max_, r, tmin, tmax)){
+
             tmin = std::max<float>(tmin, rng.tmin);
             tmax = std::min<float>(tmax, rng.tmax);
             return this->test_internal(info, r, tmin, tmax);

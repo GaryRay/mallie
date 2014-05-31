@@ -1039,10 +1039,10 @@ namespace mallie{
 		return bezier_max_n(p,n,D);           \
 	}
 
-	//DEC_BEZIER_MINMAX(vector2f,2)
+	DEC_BEZIER_MINMAX(vector2f,2)
 	DEC_BEZIER_MINMAX(vector3f,3)
 	//DEC_BEZIER_MINMAX(vector4f,4)
-	//DEC_BEZIER_MINMAX(vector2d,2)
+	DEC_BEZIER_MINMAX(vector2d,2)
 	DEC_BEZIER_MINMAX(vector3d,3)
 	//DEC_BEZIER_MINMAX(vector4d,4)
 

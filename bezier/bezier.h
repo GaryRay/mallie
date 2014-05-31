@@ -1,6 +1,7 @@
 #ifndef __BEZIER_H__
 #define __BEZIER_H__
 
+#include "../vector2.h"
 #include "../vector3.h"
 
 #include <stdlib.h>
@@ -147,11 +148,11 @@ namespace mallie{
 	TYPE bezier_max(const TYPE a[], int n);
 
 	DEF_BEZIER_MINMAX(float)
-	//DEF_BEZIER_MINMAX(vector2f)
+	DEF_BEZIER_MINMAX(vector2f)
 	DEF_BEZIER_MINMAX(vector3f)
 	//DEF_BEZIER_MINMAX(vector4f)
 	DEF_BEZIER_MINMAX(double)
-	//DEF_BEZIER_MINMAX(vector2d)
+	DEF_BEZIER_MINMAX(vector2d)
 	DEF_BEZIER_MINMAX(vector3d)
 	//DEF_BEZIER_MINMAX(vector4d)
 
