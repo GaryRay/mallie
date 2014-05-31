@@ -1,6 +1,7 @@
 #include "bezier_patch_intersection.h"
 #include "bilinear_patch_intersection.h"
 
+#include "vector2.h"
 #include "vector3.h"
 #include "matrix3.h"
 #include "matrix4.h"
@@ -8,13 +9,14 @@
 
 #include <iostream>
 #include <utility>
+#include <limits>
 
 //
 #define DIRECT_BILINEAR 1
 #define USE_BEZIERCLIP 1
 #define USE_COARSESORT 1
 
-#define USE_FLOAT 0
+#define USE_FLOAT 1
 #define USE_SSE 0
 
 #if USE_SSE
@@ -56,11 +58,17 @@ static const REAL UVEPS = 1.0/32.0;
 static const int  MAX_LEVEL = 10;
 
 #endif
+
+    static
+    inline vector3x Conv(const real3& r)
+    {
+        return vector3x(r.x, r.y, r.z); 
+    }
     
     static
-    inline vector3 Conv(const real3& r)
+    inline real3 Conv(const vector3x& r)
     {
-        return vector3(r.x, r.y, r.z); 
+        return real3(r[0], r[1], r[2]); 
     }
 
 
@@ -72,8 +80,8 @@ static const int  MAX_LEVEL = 10;
 
     static inline bool intersectAABB(range_AABB* rng, const vector3 & min, const vector3 & max, const Ray & r, float tmin, float tmax)
     {
-        int phase = r.phase();
-        int sign[3] = {(phase>>0)&1,(phase>>1)&1,(phase>>2)&1};
+        //int phase = r.phase();
+        int sign[3] = {r.dirSign[0],r.dirSign[1],r.dirSign[2]};
         vector3 box[2] = {min,max};
         vector3 org  = Conv(r.org);
         vector3 idir = Conv(r.invDir);
@@ -131,8 +139,8 @@ static const int  MAX_LEVEL = 10;
     static 
     void getZAlign(matrix4& mat, const Ray &r)
     {
-        vector3 org = r.origin();
-        vector3 dir = r.direction();
+        vector3 org = Conv(r.org);
+        vector3 dir = Conv(r.dir);
         
         vector3 z = dir;
         int plane = 0;
@@ -1435,11 +1443,7 @@ static const int  MAX_LEVEL = 10;
 		int nv = patch_.get_nv();
 
 		if(nu*nv<=16){
-#if USE_SSE
-            sse_bezier_patch<16> patch(patch_);
-#else
-            static_bezier_patch<vector3x,16> patch(patch_);
-#endif
+            bezier_patch<vector3x> patch(patch_);
 			patch.transform(mat);
 			return test_bezier_patch(patch, tmin, tmax, eps_);
 		}else{
@@ -1460,11 +1464,7 @@ static const int  MAX_LEVEL = 10;
 		bool bRet = false;
 		uvt_info uvt;
 		if(nu*nv<=16){
-#if USE_SSE
-            sse_bezier_patch<16> patch(patch_);
-#else
-            static_bezier_patch<vector3x,16> patch(patch_);
-#endif
+            bezier_patch<vector3x> patch(patch_);
 			patch.transform(mat);
 			bRet = test_bezier_patch(&uvt, patch, tmin, tmax, eps_);
 		}else{
@@ -1481,8 +1481,9 @@ static const int  MAX_LEVEL = 10;
             u = urange_[0]*(1-u) + urange_[1]*u;//global
             v = vrange_[0]*(1-v) + vrange_[1]*v;//global
             info->t = t;
-            info->position = r.origin() + t*r.direction();
-            info->coord = vector3(u,v,0);
+            info->position = Conv(Conv(r.org) + t*Conv(r.dir));
+            info->u = u;
+            info->v = v;
             {     
 		        float u = uvt.u;
 		        float v = uvt.v;
@@ -1493,10 +1494,10 @@ static const int  MAX_LEVEL = 10;
 		        vector3 U = normalize(patch_.evaluate_deriv_u(u,v));
 		        vector3 V = normalize(patch_.evaluate_deriv_v(u,v));
 		        vector3 N = cross(U,V);
-		        info->normal = N;
-		        info->geometric = N;
-		        info->tangent  = U;
-		        info->binormal = V;
+		        info->normal = Conv(N);
+		        info->geometricNormal = Conv(N);
+		        info->tangent  = Conv(U);
+		        info->binormal = Conv(V);
             }
             //uvt_info *fsp = reinterpret_cast<uvt_info*>(info->freearea);
             //*fsp = uvt;
@@ -1541,7 +1542,7 @@ static const int  MAX_LEVEL = 10;
     
     void bezier_patch_intersection::finalize(Intersection* info, const Ray& r, float dist)const
     {
-        info->position = r.origin() + dist*r.direction();
+        info->position = Conv(Conv(r.org) + dist*Conv(r.dir));
         /*
         uvt_info uvt = *reinterpret_cast<uvt_info*>(info->freearea);
         

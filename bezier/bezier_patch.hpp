@@ -1,7 +1,10 @@
 #ifndef __BEZIER_PATCH_HPP__
 #define __BEZIER_PATCH_HPP__
 
+#include "vector2.h"
 #include "vector3.h"
+#include "matrix3.h"
+#include "matrix4.h"
 #include "bezier.h"
 #include <vector>
 
@@ -297,7 +300,7 @@ namespace mallie{
 	typedef bezier_patch<float>    bezier_patch1;
 	typedef bezier_patch<vector2> bezier_patch2;
 	typedef bezier_patch<vector3> bezier_patch3;
-	typedef bezier_patch<vector4> bezier_patch4;
+	//typedef bezier_patch<vector4> bezier_patch4;
 
 
 }
