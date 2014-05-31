@@ -281,6 +281,8 @@ real3 PathTrace(Scene &scene, const Camera &camera, const RenderConfig &config,
   bool lastSpecular = true;
   double lastPdfW = 1.0;
 
+  real3 kLight = real3(0,-1,0);
+
   for (;; ++pathLength) {
     bool hit = scene.Trace(isect, ray);
     if (!hit) {
@@ -289,6 +291,13 @@ real3 PathTrace(Scene &scene, const Camera &camera, const RenderConfig &config,
         // eye -> background hit.
         break;
       }
+
+      real3 nf = isect.normal;
+      if(vdot(nf,ray.dir)>0)nf=nf.neg();
+      real kl = vdot(kLight, nf)+0.5;
+      real3 nf2 = (nf+real3(1,1,1))*0.5;
+      radiance = real3(kl, kl, kl)*nf2;
+      return radiance;
 
       // Hit background.
 #if 0
