@@ -215,6 +215,12 @@ void Camera::BuildCameraFrame(double origin[3], double corner[3], double u[3],
   }
 }
 
+static
+real Inverse(real x)
+{
+  std::min(real(1)/x, 1e+16);
+}
+
 Ray Camera::GenerateRay(double u, double v) const {
   real3 dir;
 
