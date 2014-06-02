@@ -538,8 +538,8 @@ bool BVHAccel::Build(const Mesh *mesh, const BVHBuildOptions &options) {
 
   trace("[BVHAccel] Input # of vertices = %lu\n", mesh->numVertices);
 #ifdef ENABLE_OSD_PATCH
-  size_t n = mesh->numRegularPatches;
-  trace("[BVHAccel] Input # of regular patches = %lu\n", mesh->numRegularPatches);
+  size_t n = mesh->numBezierPatches;
+  trace("[BVHAccel] Input # of bezier patches = %lu\n", mesh->numBezierPatches);
 #else
   size_t n = mesh->numFaces;
   trace("[BVHAccel] Input # of faces    = %lu\n", mesh->numFaces);
@@ -873,14 +873,14 @@ void BuildIntersection(Intersection &isect, const Mesh *mesh, Ray &ray) {
 #ifdef ENABLE_OSD_PATCH
   // (TODO: normal should be derived from spline evaluation)
   //
-  
+    // ptex index ?
 
-  const unsigned int *indices = mesh->regularPatchIndices;
-  const real *vertices = mesh->vertices;
+    //  const unsigned int *indices = mesh->regularPatchIndices;
+    //  const real *vertices = mesh->vertices;
 
-  isect.f0 = indices[16 * isect.faceID + 5];
-  isect.f1 = indices[16 * isect.faceID + 6];
-  isect.f2 = indices[16 * isect.faceID + 9];
+    //  isect.f0 = indices[16 * isect.faceID + 5];
+    //  isect.f1 = indices[16 * isect.faceID + 6];
+    //  isect.f2 = indices[16 * isect.faceID + 9];
 
   //iranai YO!
   return;
@@ -891,7 +891,6 @@ void BuildIntersection(Intersection &isect, const Mesh *mesh, Ray &ray) {
   isect.f0 = faces[3 * isect.faceID + 0];
   isect.f1 = faces[3 * isect.faceID + 1];
   isect.f2 = faces[3 * isect.faceID + 2];
-#endif
 
   real3 p0, p1, p2;
   p0[0] = vertices[3 * isect.f0 + 0];
@@ -940,6 +939,7 @@ void BuildIntersection(Intersection &isect, const Mesh *mesh, Ray &ray) {
   } else {
     isect.normal = n;
   }
+#endif
 }
 
 } // namespace

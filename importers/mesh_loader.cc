@@ -165,63 +165,27 @@ MeshLoader::LoadESON(
   }
 
 #ifdef ENABLE_OSD_PATCH
-  int64_t num_regular_patches = v.Get("num_regular_patches").Get<int64_t>();
-  printf("# of regular patches   : %lld\n", num_regular_patches);
+  int64_t num_bezier_patches = v.Get("num_bezier_patches").Get<int64_t>();
+  printf("# of bezier patches   : %lld\n", num_bezier_patches);
 
-  eson::Binary regular_indices_data = v.Get("regular_indices").Get<eson::Binary>();
-  const int* regular_indices = reinterpret_cast<int*>(const_cast<uint8_t*>(regular_indices_data.ptr));
+  eson::Binary bezier_vertices_data = v.Get("bezier_vertices").Get<eson::Binary>();
+  const float* bezier_vertices = reinterpret_cast<float*>(const_cast<uint8_t*>(bezier_vertices_data.ptr));
 #endif
 
   // ESON -> Mesh
 #ifdef ENABLE_OSD_PATCH
-  mesh.numRegularPatches     = num_regular_patches;
+  mesh.numBezierPatches = num_bezier_patches;
   mesh.numVertices  = num_vertices;
   mesh.vertices = new real[num_vertices * 3];
-  mesh.regularPatchIndices    = new unsigned int[num_regular_patches * 16];
-  mesh.materialIDs = new unsigned int[num_regular_patches];
-  mesh.bezierVertices = new real[num_regular_patches * 16 * 3];
+  mesh.materialIDs = new unsigned int[num_bezier_patches];
+  mesh.bezierVertices = new real[num_bezier_patches * 16 * 3];
 
   for (size_t i = 0; i < 3*num_vertices; i++) {
     mesh.vertices[i] = vertices[i];
   }
 
-  for (size_t i = 0; i < 16*num_regular_patches; i++) {
-    mesh.regularPatchIndices[i] = regular_indices[i];
-  }
-
-  // convert bspline to bezier
-  const float Q[4][4] = {
-      { 1.f/6.f, 4.f/6.f, 1.f/6.f, 0.f },
-      { 0.f,     4.f/6.f, 2.f/6.f, 0.f },
-      { 0.f,     2.f/6.f, 4.f/6.f, 0.f },
-      { 0.f,     1.f/6.f, 4.f/6.f, 1.f/6.f } };
-
-  real *pbv = mesh.bezierVertices;
-  for (size_t i = 0; i < num_regular_patches; i++) {
-      for (int j = 0; j < 4; j++) {
-          for (int k = 0; k < 4; k++) {
-              real3 H[4];
-              for (int l = 0; l < 4; l++) {
-                  H[l][0] = H[l][1] = H[l][2] = 0;
-                  for (int m = 0; m < 4; m++) {
-                      int vert = mesh.regularPatchIndices[i*16 + l*4 + m];
-                      H[l][0] += Q[j][m] * mesh.vertices[vert*3 + 0];
-                      H[l][1] += Q[j][m] * mesh.vertices[vert*3 + 1];
-                      H[l][2] += Q[j][m] * mesh.vertices[vert*3 + 2];
-                  }
-              }
-              real3 cp;
-              cp[0] = cp[1] = cp[2] = 0;
-              for (int m = 0; m < 4; m++) {
-                  cp[0] += Q[k][m] * H[m][0];
-                  cp[1] += Q[k][m] * H[m][1];
-                  cp[2] += Q[k][m] * H[m][2];
-              }
-              *pbv++ = cp[0];
-              *pbv++ = cp[1];
-              *pbv++ = cp[2];
-          }
-      }
+  for (size_t i = 0; i < 3*16*num_bezier_patches; i++) {
+    mesh.bezierVertices[i] = bezier_vertices[i];
   }
 
   if (material_ids) {

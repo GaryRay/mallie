@@ -20,9 +20,8 @@ typedef struct {
   unsigned int *materialIDs;   /// index x numFaces
 
 #ifdef ENABLE_OSD_PATCH
-  size_t numRegularPatches;
-  unsigned int *regularPatchIndices; /// 16 x numRegularPatches
-  real *bezierVertices;        /// [xyz] * 16 * numRegularPatches
+  size_t numBezierPatches;
+  real *bezierVertices;        /// [xyz] * 16 * numBezierPatches
 #endif
 
 } Mesh;
