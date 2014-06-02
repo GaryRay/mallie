@@ -5,8 +5,13 @@
 #include <string>
 
 #include "scene.h"
+#include "tinythread.h"
 
 namespace mallie {
+
+extern void ClearRenderCancel();
+extern void PostRenderCancel();
+extern bool CheckRenderCancel();
 
 struct RenderConfig {
   double fov;

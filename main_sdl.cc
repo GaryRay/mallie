@@ -5,11 +5,12 @@
 #include <cassert>
 #include <iostream>
 
-#ifdef ENABLE_SDL
 
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+
+#ifdef ENABLE_SDL
 
 #include <SDL.h> // SDL2
 
@@ -66,6 +67,7 @@ static int gRenderPasses = 1;
 static tthread::mutex gRenderThreadMutex;
 static time_t gRenderClock = 0;
 static bool gRenderQuit = false; // Only become true when we quit app.
+static bool gRenderCancel = false;
 
 int gWidth = 256;
 int gHeight = 256;
@@ -170,6 +172,10 @@ inline unsigned char fclamp(float x) {
   return (unsigned char)i;
 }
 
+inline float gamma22(float x) {
+  return pow(x, 1.0f/2.2f);
+}
+
 void SaveCamera(const std::string &filename) {
   FILE *fp = fopen(filename.c_str(), "w");
 
@@ -221,6 +227,8 @@ void HandleMouseButton(SDL_Event e) {
     RequestRedraw();
   
   } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+
+    PostRenderCancel();
 
     gMouseX = e.motion.x;
     gMouseY = e.motion.y;
@@ -428,11 +436,11 @@ void Display(SDL_Surface *surface, const std::vector<float> &image,
 #ifdef __APPLE__
       // BGRA?
       data[4 * (y * width + x) + 0] =
-          fclamp(scale * image[3 * (y * width + x) + 2]);
+          fclamp(gamma22(scale * image[3 * (y * width + x) + 2]));
       data[4 * (y * width + x) + 1] =
-          fclamp(scale * image[3 * (y * width + x) + 1]);
+          fclamp(gamma22(scale * image[3 * (y * width + x) + 1]));
       data[4 * (y * width + x) + 2] =
-          fclamp(scale * image[3 * (y * width + x) + 0]);
+          fclamp(gamma22(scale * image[3 * (y * width + x) + 0]));
       data[4 * (y * width + x) + 3] = 255;
 #else
       // BGRA?
@@ -800,3 +808,38 @@ void DoMainSDL(Scene &scene, const RenderConfig &config) {
 }
 }
 #endif // ENABLE_SDL
+
+namespace mallie {
+
+#ifdef ENABLE_SDL
+void PostRenderCancel()
+{
+  tthread::lock_guard<tthread::mutex> guard(gRenderThreadMutex);
+  gRenderCancel = true;
+}
+
+void ClearRenderCancel()
+{
+  tthread::lock_guard<tthread::mutex> guard(gRenderThreadMutex);
+  gRenderCancel = false;
+}
+
+bool CheckRenderCancel() {
+  tthread::lock_guard<tthread::mutex> guard(gRenderThreadMutex);
+  
+  bool ret = gRenderCancel;
+
+  return ret;
+}
+#else
+void PostRenderCancel() {
+}
+
+void ClearRenderCancel() {
+}
+
+bool CheckRenderCancel() {
+  return false;
+}
+#endif
+}

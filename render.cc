@@ -34,6 +34,8 @@
 #define THREAD_TLS __thread
 #endif
 
+extern bool CheckRenderCancel();
+
 namespace mallie {
 
 const double kFar = 1.0e+30;
@@ -381,6 +383,8 @@ void Render(Scene &scene, const RenderConfig &config,
   mallie::timerutil t;
   mallie::timerutil tEventTimer;
 
+  ClearRenderCancel();
+
   t.start();
   tEventTimer.start();
 
@@ -389,8 +393,24 @@ void Render(Scene &scene, const RenderConfig &config,
   //
   memset(&image[0], 0, sizeof(float) * width * height * 3);
 
-#pragma omp parallel for schedule(dynamic, 1)
+  int y_count = 0;
+  int y_count_iter = 16;
+  bool canceled = false;
+
   for (int y = 0; y < height; y += step) {
+
+    {
+      y_count++;
+      if (y_count > y_count_iter) {
+        canceled = CheckRenderCancel();
+        y_count = 0;
+      }
+    } 
+
+    if (canceled) {
+      //printf("cancel\n");
+      break;
+    }
 
     //if ((y % 100) == 0) {
       //printf("\rMallie:info\tRender %d of %d", y, height);
@@ -417,6 +437,7 @@ void Render(Scene &scene, const RenderConfig &config,
 
 #else
 
+    #pragma omp parallel for schedule(dynamic, 1)
     for (int x = 0; x < width; x += step) {
 
       float u = randomreal() - 0.5;
