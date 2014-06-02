@@ -8,6 +8,8 @@ namespace mallie {
 
 class Camera {
 public:
+  Camera() {};
+
   Camera(const double eye[3], const double lookat[3], const double up[3]) {
     eye_[0] = eye[0];
     eye_[1] = eye[1];

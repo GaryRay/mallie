@@ -6,6 +6,8 @@
 
 #include "bvh_accel.h"
 #include "material.h"
+#include "camera.h"
+#include "shader.h"
 
 #include "bezier/patch_accel.h"
 
@@ -58,10 +60,24 @@ public:
     return materials_[matID];
   }
 
+  void SetCamera(Camera& cam) {
+    camera_ = cam;
+  }
+
+  const Camera& GetCamera() const {
+    return camera_;
+  }
+
+  Shader& GetShader() {
+    return shader_;
+  }
+
 protected:
   BVHAccel accel_;
   Mesh mesh_;
   std::vector<Material> materials_;
+  Camera camera_;
+  Shader shader_;
 
   PatchAccel* patch_accel_;
 };

@@ -18,6 +18,7 @@
 #include "timerutil.h"
 #include "scene.h"
 #include "script_engine.h"
+#include "shader.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -428,11 +429,20 @@ void Render(Scene &scene, const RenderConfig &config,
 
       if (hit) {
 
+#if 0
         double dotNI = fabs(vdot(isect.normal, ray.dir.neg()));
 
         image[3 * (y * width + x) + 0] = isect.normal[0];
         image[3 * (y * width + x) + 1] = isect.normal[1];
         image[3 * (y * width + x) + 2] = isect.normal[2];
+#else
+        float rgba[4];
+        scene.GetShader().Shade(rgba, scene, isect, ray);
+        image[3 * (y * width + x) + 0] = rgba[0];
+        image[3 * (y * width + x) + 1] = rgba[1];
+        image[3 * (y * width + x) + 2] = rgba[2];
+
+#endif
 
         // block fill
         for (int v = 0; v < step; v++) {

@@ -57,8 +57,10 @@ static double gOrigin[3], gCorner[3], gDu[3], gDv[3];
 static double gIntensity = 1.0;
 static double gTransferOffset = 0.0;
 
+static int gShaderIndex = 0;
+
 // Progressive render param
-static int gRenderPixelStep = PIXELSTEP_COARSE;
+static int gRenderPixelStep = 1; //PIXELSTEP_COARSE;
 static int gRenderPasses = 1;
 
 static tthread::mutex gRenderThreadMutex;
@@ -250,6 +252,7 @@ void HandleMouseMotion(SDL_Event e) {
     gRenderInteractive = true;
     gRenderPasses = 1;
     RequestRedraw();
+    gRenderPixelStep = PIXELSTEP_COARSE;
 
     if (gCtrlPressed || (gMouseButton == 3)) {
 
@@ -308,16 +311,16 @@ void HandleMouseMotion(SDL_Event e) {
   gMouseY = e.motion.y;
 }
 
-bool HandleKey(SDL_Event e) {
+bool HandleKey(Scene& scene, SDL_Event e) {
   if (e.type == SDL_KEYUP) {
     gShiftPressed = false;
     gCtrlPressed = false;
     gRenderInteractive = false;
     gRenderPasses = 1;
   } else if (e.type == SDL_KEYDOWN) {
-    gRenderInteractive = true;
-    gRenderPasses = 1;
-    gRenderPixelStep = PIXELSTEP_COARSE;
+    //gRenderInteractive = true;
+    //gRenderPasses = 1;
+    //gRenderPixelStep = PIXELSTEP_COARSE;
     switch (e.key.keysym.sym) {
     case SDLK_ESCAPE:
     case 'q':
@@ -372,6 +375,16 @@ bool HandleKey(SDL_Event e) {
       break;
     case 'v':
       LoadCamera("camera.dat");
+      break;
+    case 'm':
+      {
+        int numShaders = scene.GetShader().NumShaders();
+        gShaderIndex++;
+      
+        scene.GetShader().SetShader(gShaderIndex % numShaders);
+        printf("shader = %d\n", gShaderIndex % numShaders);
+        RequestRedraw();
+      }
       break;
     default:
       break;
@@ -572,11 +585,19 @@ void RenderThread(void *arg) {
     Render(*(ctx.scene), *(ctx.config), gImage, gCount, gEye, gLookat, gUp,
            gCurrQuat, gRenderPixelStep);
 
-    // Always clear framebuffer for intermediate result
-    // if (gRenderPixelStep > 1) {
-    if (gRenderPasses == 1) {
-      //ClearImage(gFramebuffer);
+    // redraw request check.
+    {
+      tthread::lock_guard<tthread::mutex> guard(gRenderThreadMutex);
+      if (gNeedRedraw) {
+        // Discard render result and do refresh rendering.
+        ClearImage(gFramebuffer);
+        ClearCount(gCount);
+
+        gNeedRedraw = false;
+        continue;
+      }
     }
+
 
     AccumImage(gFramebuffer, gImage);
 
@@ -676,7 +697,7 @@ void DoMainSDL(Scene &scene, const RenderConfig &config) {
       case SDL_KEYUP:
         hasEvent = true;
       case SDL_KEYDOWN:
-        done = HandleKey(event);
+        done = HandleKey(scene, event);
         break;
       case SDL_MOUSEBUTTONUP:
         hasEvent = true;

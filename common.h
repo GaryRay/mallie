@@ -41,7 +41,7 @@ struct real3 {
   real operator[](int i) const { return (&x)[i]; }
   real &operator[](int i) { return (&x)[i]; }
 
-  real3 neg() { return real3(-x, -y, -z); }
+  real3 neg() const { return real3(-x, -y, -z); }
 
   real length() { return sqrt(x * x + y * y + z * z); }
 
