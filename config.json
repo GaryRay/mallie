@@ -10,7 +10,7 @@
     "eson_filename" : "test_catmark_gregory_test1.eson",
     "material_filename" : "teapot.material.json",
     "0envmap_filename" : "Road_to_MonumentValley_Ref.hdr",
-    "0envmap_coor" : "longlat",
+    "0envmap_coord" : "longlat",
     "resolution" : [512, 512],
     "scene_scale" : 1.0,
     "num_passes" : 1000,
