@@ -474,7 +474,8 @@ size_t BVHAccel::BuildTree(const Mesh *mesh, unsigned int leftIdx,
   for (int axisTry = 0; axisTry < 3; axisTry++) {
 
     unsigned int *begin = &indices_[leftIdx];
-    unsigned int *end = &indices_[rightIdx];
+    unsigned int endIdx = std::max(leftIdx, rightIdx - 1);
+    unsigned int *end = &indices_[endIdx];
     unsigned int *mid = 0;
 
     // try minCutAxis first.
@@ -555,7 +556,7 @@ bool BVHAccel::Build(const Mesh *mesh, const BVHBuildOptions &options) {
   //
   // 2. Build tree
   //
-  BuildTree(mesh, 0, n - 1, 0);
+  BuildTree(mesh, 0, n, 0);
 
   // Tree will be null if input triangle count == 0.
   if (!nodes_.empty()) {
