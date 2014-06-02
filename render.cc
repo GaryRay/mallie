@@ -396,7 +396,7 @@ void Render(Scene &scene, const RenderConfig &config,
       //fflush(stdout);
     //}
 
-#if 1
+#if 0
     for (int x = 0; x < width; x += step) {
 
       // random sample pixel position in [step x step] sized tile.
@@ -433,22 +433,22 @@ void Render(Scene &scene, const RenderConfig &config,
         image[3 * (y * width + x) + 0] = isect.normal[0];
         image[3 * (y * width + x) + 1] = isect.normal[1];
         image[3 * (y * width + x) + 2] = isect.normal[2];
-      }
-    }
 
-    // block fill
-    if (step > 1) {
-      for (int x = 0; x < width; x += step) {
+        // block fill
         for (int v = 0; v < step; v++) {
+          if (y+v >= height) continue;
           for (int u = 0; u < step; u++) {
+            if (x+u >= width) continue;
             for (int k = 0; k < 3; k++) {
               image[((y + v) * width * 3 + (x + u) * 3) + k] =
                   image[3 * (y * width + x) + k];
+              count[(y+v) * width + (x+u)]++;
             }
           }
         }
       }
     }
+
 #endif
   }
 

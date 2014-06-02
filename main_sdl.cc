@@ -37,7 +37,7 @@ static bool gRenderInteractive = false;
 static int gMouseX = -1, gMouseY = -1;
 static bool gMouseMoving = false;
 static int gMouseButton = 0;
-static bool gNeedRedraw = false;
+static bool gNeedRedraw = true;
 static bool gShiftPressed = false;
 static bool gCtrlPressed = false;
 static bool gLightEditing = false;
@@ -83,6 +83,12 @@ typedef struct {
   Scene *scene;
   const RenderConfig *config;
 } RenderContext;
+
+void RequestRedraw() {
+  tthread::lock_guard<tthread::mutex> guard(gRenderThreadMutex);
+  gNeedRedraw = true;
+  return;
+}
 
 static void EulerToQuatRad(double quat[4], double x, double y,
                            double z) // in radian. yaw, pitch, roll
@@ -183,6 +189,10 @@ void SaveCamera(const std::string &filename) {
 
 void LoadCamera(const std::string &filename) {
   FILE *fp = fopen(filename.c_str(), "r");
+  if (!fp) {
+    std::cerr << "Mallie:error\tmsg:camera file not found " << filename << std::endl;
+    return;
+  }
 
   fscanf(fp, "%lf %lf %lf\n", &gEye[0], &gEye[1], &gEye[2]);
   fscanf(fp, "%lf %lf %lf\n", &gLookat[0], &gLookat[1], &gLookat[2]);
@@ -190,16 +200,24 @@ void LoadCamera(const std::string &filename) {
          &gCurrQuat[3]);
 
   fclose(fp);
+
+  std::cout << "Mallie:info\tLoad camera data" << std::endl;
+  RequestRedraw();
+  gViewChanged = true;
 }
 
 void HandleMouseButton(SDL_Event e) {
+
   if (e.type == SDL_MOUSEBUTTONUP) {
     gMouseMoving = false;
-    gNeedRedraw = true;
     gViewChanged = true;
     gMouseButton = 0;
     gRenderInteractive = false;
     gRenderPasses = 1;
+    gRenderPixelStep = 1;
+
+    RequestRedraw();
+  
   } else if (e.type == SDL_MOUSEBUTTONDOWN) {
 
     gMouseX = e.motion.x;
@@ -229,9 +247,9 @@ void HandleMouseMotion(SDL_Event e) {
     int y = e.motion.y;
 
     gViewChanged = true;
-    gNeedRedraw = true;
     gRenderInteractive = true;
     gRenderPasses = 1;
+    RequestRedraw();
 
     if (gCtrlPressed || (gMouseButton == 3)) {
 
@@ -318,29 +336,29 @@ bool HandleKey(SDL_Event e) {
       trackball(gCurrQuat, 0.0f, 0.0f, 0.0f, 0.0f);
       trackball(gPrevQuat, 0.0f, 0.0f, 0.0f, 0.0f);
       gRotate[0] = gRotate[1] = gRotate[2] = 0.0f;
-      gNeedRedraw = true;
+      RequestRedraw();
       break;
     case 'i':
       gIntensity += 0.1f;
-      gNeedRedraw = true;
+      RequestRedraw();
       break;
     case 'o':
       gIntensity -= 0.1f;
       if (gIntensity < 0.1f) {
         gIntensity = 0.1f;
       }
-      gNeedRedraw = true;
+      RequestRedraw();
       break;
     case 'j':
       gTransferOffset -= 0.02f;
       if (gTransferOffset < 0.0f) {
         gTransferOffset = 0.0f;
       }
-      gNeedRedraw = true;
+      RequestRedraw();
       break;
     case 'k':
       gTransferOffset += 0.02f;
-      gNeedRedraw = true;
+      RequestRedraw();
       break;
     case SDLK_LSHIFT:
       gShiftPressed = true;
@@ -352,6 +370,9 @@ bool HandleKey(SDL_Event e) {
     case 'c':
       SaveCamera("camera.dat");
       break;
+    case 'v':
+      LoadCamera("camera.dat");
+      break;
     default:
       break;
     }
@@ -361,8 +382,12 @@ bool HandleKey(SDL_Event e) {
 }
 
 void Display(SDL_Surface *surface, const std::vector<float> &image,
-             const std::vector<int> &counts, int passes, int width,
+             const std::vector<int> &counts, int width,
              int height) {
+
+  // Write to backbuffer.
+  tthread::lock_guard<tthread::mutex> guard(gRenderThreadMutex);
+
   int ret = SDL_LockMutex(gMutex);
   assert(ret == 0);
 
@@ -373,15 +398,14 @@ void Display(SDL_Surface *surface, const std::vector<float> &image,
 
   // ARGB
   unsigned char *data = (unsigned char *)surface->pixels;
-#if 0
-  float scale = 1.0f / (float) passes;
-#endif
+
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-#if 1
+
       // per-pixel count
-      float scale = 1.0f / (float)counts[y * width + x];
-#endif
+      int c = counts[y*width+x];
+      if (c < 1) c = 1;
+      float scale = 1.0f / (float)c;
 
       unsigned char col[3];
       col[0] = x % 255;
@@ -527,6 +551,17 @@ void RenderThread(void *arg) {
       continue;
     }
 
+    // redraw request check.
+    {
+      tthread::lock_guard<tthread::mutex> guard(gRenderThreadMutex);
+      if (gNeedRedraw) {
+        ClearImage(gFramebuffer);
+        ClearCount(gCount);
+
+        gNeedRedraw = false;
+      }
+    }
+
     // Use Euler rotation.
     // printf("rot = %f, %f, %f\n", 180*gRotate[0]/M_PI, 180*gRotate[1]/M_PI,
     // 180*gRotate[2]/M_PI);
@@ -540,18 +575,18 @@ void RenderThread(void *arg) {
     // Always clear framebuffer for intermediate result
     // if (gRenderPixelStep > 1) {
     if (gRenderPasses == 1) {
-      // ClearImage(gFramebuffer);
+      //ClearImage(gFramebuffer);
     }
 
     AccumImage(gFramebuffer, gImage);
 
-    Display(gSurface, gFramebuffer, gCount, gRenderPasses, ctx.config->width,
+    Display(gSurface, gFramebuffer, gCount, ctx.config->width,
             ctx.config->height);
 
-    if (gMouseMoving) {
-      ClearImage(gFramebuffer);
-      ClearCount(gCount);
-    }
+    //if (gMouseMoving) {
+    //  ClearImage(gFramebuffer);
+    //  ClearCount(gCount);
+    //}
 
 // printf("step = %d, interactive = %d\n", gRenderPixelStep,
 // gRenderInteractive);
@@ -616,9 +651,7 @@ void DoMainSDL(Scene &scene, const RenderConfig &config) {
   gImage.resize(gWidth * gHeight * 3); // RGB
 
   gCount.resize(gWidth * gHeight);
-  for (size_t i = 0; i < gCount.size(); i++) {
-    gCount[i] = 0;
-  }
+  ClearCount(gCount);
 
   Init(config);
 
@@ -666,8 +699,6 @@ void DoMainSDL(Scene &scene, const RenderConfig &config) {
 
 #if 0
     if ((gRenderPasses >= config.num_passes)) {
-      //printf("Render finished\n");
-      // render finished
       //Display(gSurface, gFramebuffer, gRenderPasses, config.width,
       //config.height);
       continue;
@@ -731,11 +762,9 @@ void DoMainSDL(Scene &scene, const RenderConfig &config) {
 #endif
   }
 
-#if 1
   NotifyRenderQuit();
   // renderThread.detach();
   renderThread.join();
-#endif
 
   printf("\n");
   fflush(stdout); // for safety
@@ -745,7 +774,6 @@ void DoMainSDL(Scene &scene, const RenderConfig &config) {
 namespace mallie {
 
 void DoMainSDL(Scene &scene, const RenderConfig &config) {
-  assert(0);
 
   return;
 }
