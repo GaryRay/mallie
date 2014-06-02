@@ -264,7 +264,7 @@ Texture::fetch(
     if (m_format == FORMAT_BYTE) {
       FilterByte(rgba, m_image, i00, i10, i01, i11, w, stride);
     } else if (m_format == FORMAT_FLOAT) {
-      FilterFloat(rgba, reinterpret_cast<float*>(m_image), i00, i10, i01, i11, w, stride);
+      FilterFloat(rgba, reinterpret_cast<const float*>(m_image), i00, i10, i01, i11, w, stride);
     } else { // unknown
 
     }
@@ -326,3 +326,50 @@ AngularMapSampler::Sample(
     texture->fetch(rgba, uu, vv);
 }
 
+void
+LongLatMapSampler::Sample(
+    float* rgba,
+    float  dir[3],
+    const  Texture* texture)
+{
+  double theta, phi;
+
+  vector3 v;
+  v[0] = dir[0];
+  v[1] = -dir[2];
+  v[2] = dir[1];
+  v.normalize();
+
+  // atan2(y, x) = 
+  //
+  //           y                                  y
+  //       pi/2|\                             pi/2|\
+  //           |                                  |
+  //   pi      |       0                 pi       |        0
+  //  ---------o---------> x       =>>   ---------o--------> x
+  //  -pi      |      -0                 pi       |      2 pi
+  //           |                                  |
+  //           |                                  |
+  //      -pi/2|                             3/2pi|
+  //           
+
+  phi = atan2(v[1], v[0]);
+  if (phi < 0.0) {
+      phi += 2.0*M_PI;            // -> now phi in [0, 2PI]
+  }
+  if (phi < 0.0) phi = 0.0;   // for safety.
+  if (phi > 2.0 * M_PI) phi = 2.0 * M_PI;   // for safety.
+
+  double z = v[2];
+  if (z < -1.0) z = -1.0;
+  if (z > 1.0) z = 1.0;
+  theta = acos(z);
+
+  // Flip Y
+  //theta = M_PI - theta;
+  texture->fetch(rgba, phi / (2.0 * M_PI), theta / M_PI);
+  //printf("phi = %f\n", phi / (2.0 * M_PI));
+  //rgba[0] = phi / (2.0 * M_PI);
+  //rgba[1] = theta / M_PI;
+  //rgba[2] = 0.0;
+}

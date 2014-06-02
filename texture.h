@@ -14,21 +14,27 @@ public:
     FORMAT_FLOAT,
   } Format;
 
+  typedef enum {
+    COORDINATE_LONGLAT,
+    COORDINATE_ANGULAR,
+  } Coordinate;
+
   Texture() {
     // Make invalid texture
     m_width = -1;
     m_height = -1;
     m_image = NULL;
     m_components = -1;
+    m_coordinate = COORDINATE_LONGLAT;
   }   
 
-  Texture(unsigned char *image, int width, int height, int components, Format format, float gamma = 1.0f) {
-    Set(image, width, height, components, format, gamma);
+  Texture(const unsigned char *image, int width, int height, int components, Format format, float gamma = 1.0f, Coordinate coord = COORDINATE_LONGLAT) {
+    Set(image, width, height, components, format, gamma, coord);
   }
 
   ~Texture() { }
 
-  void Set(unsigned char *image, int width, int height, int components, Format format, float gamma = 1.0f) {
+  void Set(const unsigned char *image, int width, int height, int components, Format format, float gamma = 1.0f, Coordinate coord = COORDINATE_LONGLAT) {
     m_width         = width;
     m_height        = height;
     m_image         = image;
@@ -37,6 +43,7 @@ public:
     m_components    = components;
     m_format        = format;
     m_invGamma      = 1.0f / gamma; // Take a inv for faster computation.
+    m_coordinate    = coord;
   }
 
   int width() const {
@@ -51,7 +58,11 @@ public:
     return m_components;
   }
 
-  unsigned char* image() const {
+  Coordinate coordinate() const {
+    return m_coordinate;
+  }
+
+  const unsigned char* image() const {
     return m_image;
   } 
   
@@ -72,9 +83,10 @@ private:
   float           m_invWidth;
   float           m_invHeight;
   int             m_components;
-  unsigned char*  m_image;
+  const unsigned char*  m_image;
   float           m_invGamma;
-  int             m_format;    
+  Format          m_format;    
+  Coordinate      m_coordinate;
 };
 
 //
@@ -86,6 +98,19 @@ AngularMapSampler
  public:
   AngularMapSampler() {};
   ~AngularMapSampler() {};
+
+  static void Sample(float* rgba, float dir[3], const Texture* texture);
+};
+
+//
+// A sampler class for longlat map texture.
+//
+class
+LongLatMapSampler
+{
+ public:
+  LongLatMapSampler() {};
+  ~LongLatMapSampler() {};
 
   static void Sample(float* rgba, float dir[3], const Texture* texture);
 };

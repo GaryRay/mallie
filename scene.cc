@@ -15,10 +15,7 @@ namespace mallie {
 
 void Node::UpdateTransform() {}
 
-Scene::Scene()
-{
-  patch_accel_ = NULL;
-}
+Scene::Scene() { patch_accel_ = NULL; }
 
 Scene::~Scene() {
   delete[] mesh_.vertices;
@@ -30,12 +27,15 @@ Scene::~Scene() {
 #endif
   delete[] mesh_.materialIDs;
 
-  if(patch_accel_)delete patch_accel_;
+  if (patch_accel_)
+    delete patch_accel_;
 }
 
 bool Scene::Init(const std::string &objFilename,
                  const std::string &esonFilename,
-                 const std::string &materialFilename, double sceneScale) {
+                 const std::string &materialFilename,
+                 const std::string &envmapFilename,
+                 const std::string &envmapCoord, double sceneScale) {
 
   bool ret = false;
 #if 1
@@ -98,8 +98,8 @@ bool Scene::Init(const std::string &objFilename,
   printf("  Max tree depth   : %d\n", stats.maxTreeDepth);
 #else
 
-//load patch
-  std::vector< bezier_patch<vector3> > patch_array;
+  // load patch
+  std::vector<bezier_patch<vector3>> patch_array;
   ret = PatchLoader::LoadESON(patch_array, esonFilename.c_str());
 
   if (!ret) {
@@ -119,23 +119,24 @@ bool Scene::Init(const std::string &objFilename,
   patch_accel_ = new PatchAccel(patch_array);
 
 #endif
+
+  // load envmap if exist
+  if (!envmapFilename.empty()) {
+    bool ret = LoadEnvMap(envmapFilename, envmapCoord);
+  }
   return true;
 }
 
 bool Scene::Trace(Intersection &isect, Ray &ray) {
-  if(patch_accel_==NULL)
-  {
+  if (patch_accel_ == NULL) {
     return accel_.Traverse(isect, &mesh_, ray);
-  }
-  else
-  {
+  } else {
     return patch_accel_->Traverse(isect, ray);
   }
 }
 
 void Scene::BoundingBox(real3 &bmin, real3 &bmax) {
-  if(patch_accel_==NULL)
-  {
+  if (patch_accel_ == NULL) {
     const std::vector<BVHNode> &nodes = accel_.GetNodes();
     assert(nodes.size() > 0);
 
@@ -146,16 +147,44 @@ void Scene::BoundingBox(real3 &bmin, real3 &bmax) {
     bmax[0] = nodes[0].bmax[0];
     bmax[1] = nodes[0].bmax[1];
     bmax[2] = nodes[0].bmax[2];
-  }
-  else
-  {
-     patch_accel_->GetBoundingBox(bmin, bmax);
+  } else {
+    patch_accel_->GetBoundingBox(bmin, bmax);
   }
 }
 
 real3 Scene::GetBackgroundRadiance(real3 &dir) {
   // Constant dome light
   return real3(0.75, 0.75, 0.75);
+}
+
+bool Scene::LoadEnvMap(const std::string &filename, const std::string& coord) {
+
+  int x, y, n;
+  float *data = stbi_loadf(filename.c_str(), &x, &y, &n, 0);
+  float gamma = 1.0f;
+
+  Texture::Coordinate coord_type = Texture::COORDINATE_LONGLAT;
+
+  if (coord == "longlat") {
+    coord_type = Texture::COORDINATE_LONGLAT;
+  } else if (coord == "angularmap") {
+    coord_type = Texture::COORDINATE_ANGULAR;
+  } else {
+    printf("Mallie:error\tmsg:unknown coordinate [%s]\n", coord.c_str());
+    exit(1);
+  }
+
+  if (data) {
+    assert(n == 3); // RGB
+    printf("Mallie:info\tmsg:envmap [%s] %d x %d\tcoord:%s\n", filename.c_str(), x, y, coord.c_str());
+
+    envMap_.Set(reinterpret_cast<const unsigned char *>(data), x, y, 3,
+                Texture::FORMAT_FLOAT, gamma, coord_type);
+  } else {
+    printf("Mallie:error\tmsg:Failed to load envmap [%s]\n", filename.c_str());
+  }
+
+  return true;
 }
 
 } // namespace

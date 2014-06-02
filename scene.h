@@ -8,6 +8,7 @@
 #include "material.h"
 #include "camera.h"
 #include "shader.h"
+#include "texture.h"
 
 #include "bezier/patch_accel.h"
 
@@ -47,7 +48,9 @@ public:
 
   // Fixme.
   bool Init(const std::string &objFilename, const std::string &esonFilename,
-            const std::string &materialFilename, double sceneScale = 1.0);
+            const std::string &materialFilename,
+            const std::string &envmapFilename, const std::string &envmapCoord,
+            double sceneScale = 1.0);
 
   bool Trace(Intersection &isect, Ray &ray);
 
@@ -60,17 +63,15 @@ public:
     return materials_[matID];
   }
 
-  void SetCamera(Camera& cam) {
-    camera_ = cam;
-  }
+  void SetCamera(Camera &cam) { camera_ = cam; }
 
-  const Camera& GetCamera() const {
-    return camera_;
-  }
+  const Camera &GetCamera() const { return camera_; }
 
-  Shader& GetShader() {
-    return shader_;
-  }
+  Shader &GetShader() { return shader_; }
+
+  bool LoadEnvMap(const std::string &filename, const std::string& coord);
+
+  const Texture &GetEnvMap() const { return envMap_; }
 
 protected:
   BVHAccel accel_;
@@ -79,9 +80,10 @@ protected:
   Camera camera_;
   Shader shader_;
 
-  PatchAccel* patch_accel_;
-};
+  Texture envMap_; // Environment map(Assume angular map coordinte)
 
+  PatchAccel *patch_accel_;
+};
 }
 
 #endif // __MALLIE_SCENE_H__

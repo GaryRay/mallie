@@ -94,7 +94,7 @@ static int GetNumCPUs() {
 
 bool InitScene(mallie::Scene &scene, mallie::RenderConfig &config) {
   return scene.Init(config.obj_filename, config.eson_filename,
-                    config.material_filename, config.scene_scale);
+                    config.material_filename, config.envmap_filename, config.envmap_coord, config.scene_scale);
 }
 
 bool LoadJSONConfig(mallie::RenderConfig &config, // [out]
@@ -189,6 +189,16 @@ bool LoadJSONConfig(mallie::RenderConfig &config, // [out]
   if (json_value_get_type(json_object_dotget_value(object, "plane")) ==
       JSONBoolean) {
     config.plane = json_object_dotget_boolean(object, "plane");
+  }
+
+  if (json_value_get_type(json_object_dotget_value(object, "envmap_filename")) ==
+      JSONString) {
+    config.envmap_filename = json_object_dotget_string(object, "envmap_filename");
+  }
+
+  if (json_value_get_type(json_object_dotget_value(object, "envmap_coord")) ==
+      JSONString) {
+    config.envmap_coord = json_object_dotget_string(object, "envmap_coord");
   }
 
   json_value_free(root);

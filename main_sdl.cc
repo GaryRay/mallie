@@ -426,13 +426,13 @@ void Display(SDL_Surface *surface, const std::vector<float> &image,
       col[2] = 127;
 
 #ifdef __APPLE__
-      // RGBA
+      // BGRA?
       data[4 * (y * width + x) + 0] =
-          fclamp(scale * image[3 * (y * width + x) + 0]);
+          fclamp(scale * image[3 * (y * width + x) + 2]);
       data[4 * (y * width + x) + 1] =
           fclamp(scale * image[3 * (y * width + x) + 1]);
       data[4 * (y * width + x) + 2] =
-          fclamp(scale * image[3 * (y * width + x) + 2]);
+          fclamp(scale * image[3 * (y * width + x) + 0]);
       data[4 * (y * width + x) + 3] = 255;
 #else
       // BGRA?

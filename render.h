@@ -27,6 +27,8 @@ struct RenderConfig {
   std::string obj_filename;
   std::string eson_filename;
   std::string material_filename;
+  std::string envmap_filename;
+  std::string envmap_coord; // "longlat" or "angularmap"
 
   RenderConfig()
       : fov(45.0), width(512), height(512), scene_scale(1.0), plane(false),
@@ -42,6 +44,8 @@ struct RenderConfig {
     up[1] = 1.0;
     up[2] = 0.0;
     quat[0] = quat[1] = quat[2] = quat[3] = 0.0;
+
+    envmap_coord = "longlat";
   }
 };
 
