@@ -24,6 +24,7 @@ Scene::~Scene() {
   delete[] mesh_.vertices;
 #ifdef ENABLE_OSD_PATCH
   delete[] mesh_.bezierVertices;
+  delete[] mesh_.patchParams;
 #else
   delete[] mesh_.faces;
 #endif

@@ -871,18 +871,27 @@ void BuildIntersection(Intersection &isect, const Mesh *mesh, Ray &ray) {
 
 
 #ifdef ENABLE_OSD_PATCH
-  // (TODO: normal should be derived from spline evaluation)
-  //
-    // ptex index ?
+  // remap ptex index
+  const FarPatchParam &param = mesh->patchParams[isect.faceID];
+  isect.faceID = param.faceIndex;
+  unsigned int bits = param.bitfield.field;
+  int level = 1 << ((bits & 0xf) - ((bits >> 4) &1));
+  int pu = (bits >> 17) & 0x3ff;
+  int pv = (bits >> 7) & 0x3ff;
+  int rot = (bits >> 5) & 0x3;
 
-    //  const unsigned int *indices = mesh->regularPatchIndices;
-    //  const real *vertices = mesh->vertices;
+  float u = float(rot==0)*(isect.v)
+          + float(rot==1)*(1-isect.u)
+          + float(rot==2)*(1-isect.v)
+          + float(rot==3)*(isect.u);
+  float v = float(rot==0)*(isect.u)
+          + float(rot==1)*(isect.v)
+          + float(rot==2)*(1-isect.u)
+          + float(rot==3)*(1-isect.v);
 
-    //  isect.f0 = indices[16 * isect.faceID + 5];
-    //  isect.f1 = indices[16 * isect.faceID + 6];
-    //  isect.f2 = indices[16 * isect.faceID + 9];
+  isect.u = (u + pu)/(float)level;
+  isect.v = (v + pv)/(float)level;
 
-  //iranai YO!
   return;
 #else
   // face index

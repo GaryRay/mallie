@@ -309,6 +309,9 @@ real3 PathTrace(Scene &scene, const Camera &camera, const RenderConfig &config,
       radiance += kd / real3(pathLength, pathLength, pathLength);
     }
 
+    // ptex
+    //return real3(isect.u, isect.v, isect.faceID*0.001);
+
     if (pathLength >= kMaxPathLength) {
       break;
     }

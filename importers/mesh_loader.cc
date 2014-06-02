@@ -170,6 +170,9 @@ MeshLoader::LoadESON(
 
   eson::Binary bezier_vertices_data = v.Get("bezier_vertices").Get<eson::Binary>();
   const float* bezier_vertices = reinterpret_cast<float*>(const_cast<uint8_t*>(bezier_vertices_data.ptr));
+
+  eson::Binary patch_params_data = v.Get("patch_param").Get<eson::Binary>();
+  const FarPatchParam *patch_params = reinterpret_cast<FarPatchParam*>(const_cast<uint8_t*>(patch_params_data.ptr));
 #endif
 
   // ESON -> Mesh
@@ -179,6 +182,7 @@ MeshLoader::LoadESON(
   mesh.vertices = new real[num_vertices * 3];
   mesh.materialIDs = new unsigned int[num_bezier_patches];
   mesh.bezierVertices = new real[num_bezier_patches * 16 * 3];
+  mesh.patchParams = new FarPatchParam[num_bezier_patches];
 
   for (size_t i = 0; i < 3*num_vertices; i++) {
     mesh.vertices[i] = vertices[i];
@@ -186,6 +190,10 @@ MeshLoader::LoadESON(
 
   for (size_t i = 0; i < 3*16*num_bezier_patches; i++) {
     mesh.bezierVertices[i] = bezier_vertices[i];
+  }
+
+  for (size_t i = 0; i < num_bezier_patches; i++) {
+    mesh.patchParams[i] = patch_params[i];
   }
 
   if (material_ids) {
