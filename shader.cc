@@ -154,6 +154,21 @@ void EnvShader(float rgba[4], const Scene &scene, const Intersection &isect,
   }
 }
 
+void PtexShader(float rgba[4], const Scene &scene, const Intersection &isect,
+                const Ray &ray) {
+
+  float illum[4];
+  EyeDotN(illum, scene, isect, ray);
+
+  scene.GetPTexture()->Eval(rgba, 0, 3, isect.faceID, isect.u, isect.v, 0, 0, 0, 0);
+
+  float scale = 4.0f;
+  rgba[0] *= scale*illum[0];
+  rgba[1] *= scale*illum[1];
+  rgba[2] *= scale*illum[2];
+  rgba[3] = 1;
+}
+
 void YourShader(float rgba[4], const Scene &scene, const Intersection &isect,
                 const Ray &ray) {}
 
@@ -169,6 +184,7 @@ Shader::Shader() {
   RegisterShader(0, ShowNormal);
   RegisterShader(1, EyeDotN);
   RegisterShader(2, EnvShader);
+  RegisterShader(3, PtexShader);
 
   // @note { Add your shader here! }
 }
