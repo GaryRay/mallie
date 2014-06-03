@@ -35,9 +35,11 @@ struct RenderConfig {
   std::string envmap_filename;
   std::string envmap_coord; // "longlat" or "angularmap"
 
+  float display_gamma;
+
   RenderConfig()
       : fov(45.0), width(512), height(512), scene_scale(1.0), plane(false),
-        num_passes(10), num_photons(10000) {
+        num_passes(10), num_photons(10000), display_gamma(2.2f) {
 
     eye[0] = 0.0;
     eye[1] = 0.0;

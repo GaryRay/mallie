@@ -172,8 +172,8 @@ inline unsigned char fclamp(float x) {
   return (unsigned char)i;
 }
 
-inline float gamma22(float x) {
-  return pow(x, 1.0f/2.2f);
+inline float gamma_correct(float x, float inv_gamma) {
+  return pow(x, inv_gamma);
 }
 
 void SaveCamera(const std::string &filename) {
@@ -404,7 +404,7 @@ bool HandleKey(Scene& scene, SDL_Event e) {
 
 void Display(SDL_Surface *surface, const std::vector<float> &image,
              const std::vector<int> &counts, int width,
-             int height) {
+             int height, float gamma) {
 
   // Write to backbuffer.
   tthread::lock_guard<tthread::mutex> guard(gRenderThreadMutex);
@@ -420,6 +420,8 @@ void Display(SDL_Surface *surface, const std::vector<float> &image,
   // ARGB
   unsigned char *data = (unsigned char *)surface->pixels;
 
+  float inv_gamma = 1.0f / gamma;
+
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
 
@@ -428,28 +430,28 @@ void Display(SDL_Surface *surface, const std::vector<float> &image,
       if (c < 1) c = 1;
       float scale = 1.0f / (float)c;
 
-      unsigned char col[3];
-      col[0] = x % 255;
-      col[1] = y % 255;
-      col[2] = 127;
+      //unsigned char col[3];
+      //col[0] = x % 255;
+      //col[1] = y % 255;
+      //col[2] = 127;
 
 #ifdef __APPLE__
       // BGRA?
       data[4 * (y * width + x) + 0] =
-          fclamp(gamma22(scale * image[3 * (y * width + x) + 2]));
+          fclamp(gamma_correct(scale * image[3 * (y * width + x) + 2], inv_gamma));
       data[4 * (y * width + x) + 1] =
-          fclamp(gamma22(scale * image[3 * (y * width + x) + 1]));
+          fclamp(gamma_correct(scale * image[3 * (y * width + x) + 1], inv_gamma));
       data[4 * (y * width + x) + 2] =
-          fclamp(gamma22(scale * image[3 * (y * width + x) + 0]));
+          fclamp(gamma_correct(scale * image[3 * (y * width + x) + 0], inv_gamma));
       data[4 * (y * width + x) + 3] = 255;
 #else
       // BGRA?
       data[4 * (y * width + x) + 2] =
-          fclamp(scale * image[3 * (y * width + x) + 0]);
+          fclamp(gamma_correct(scale * image[3 * (y * width + x) + 0], inv_gamma));
       data[4 * (y * width + x) + 1] =
-          fclamp(scale * image[3 * (y * width + x) + 1]);
+          fclamp(gamma_correct(scale * image[3 * (y * width + x) + 1], inv_gamma));
       data[4 * (y * width + x) + 0] =
-          fclamp(scale * image[3 * (y * width + x) + 2]);
+          fclamp(gamma_correct(scale * image[3 * (y * width + x) + 2], inv_gamma));
       data[4 * (y * width + x) + 3] = 255;
 #endif
     }
@@ -610,7 +612,7 @@ void RenderThread(void *arg) {
     AccumImage(gFramebuffer, gImage);
 
     Display(gSurface, gFramebuffer, gCount, ctx.config->width,
-            ctx.config->height);
+            ctx.config->height, ctx.config->display_gamma);
 
     //if (gMouseMoving) {
     //  ClearImage(gFramebuffer);
