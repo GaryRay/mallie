@@ -36,15 +36,17 @@ PTexture::PTexture(const char *filename) : m_texture(NULL), m_filter(NULL) {
   PtexCache *cache = InitPtex(); // todo: free cache
   m_texture = LoadPtex(cache, (const char *)filename);
 
-  PtexFilter::Options opts(PtexFilter::f_point);
-  m_filter = PtexFilter::getFilter(m_texture, opts);
+  if (m_texture) {
+    PtexFilter::Options opts(PtexFilter::f_point);
+    m_filter = PtexFilter::getFilter(m_texture, opts);
+  }
 #endif
 }
 
 PTexture::~PTexture() {
 #ifdef ENABLE_PTEX
-  m_filter->release();
-  m_texture->release();
+  if (m_filter) m_filter->release();
+  if (m_texture) m_texture->release();
 #endif
 }
 
