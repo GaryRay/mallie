@@ -6,6 +6,7 @@
 #include "importers/mesh_loader.h"
 #include "importers/patch_loader.h"
 #include "scene.h"
+#include "texture.h"
 #include "timerutil.h"
 
 #define STBI_HEADER_FILE_ONLY
@@ -15,7 +16,7 @@ namespace mallie {
 
 void Node::UpdateTransform() {}
 
-Scene::Scene() { patch_accel_ = NULL; }
+Scene::Scene() { patch_accel_ = NULL; ptex_ = NULL; }
 
 Scene::~Scene() {
   delete[] mesh_.vertices;
@@ -26,6 +27,10 @@ Scene::~Scene() {
   delete[] mesh_.faces;
 #endif
   delete[] mesh_.materialIDs;
+
+#ifdef ENABLE_PTEX
+  delete ptex_;
+#endif
 
   if (patch_accel_)
     delete patch_accel_;
@@ -123,6 +128,10 @@ bool Scene::Init(const std::string &objFilename,
   // load envmap if exist
   if (!envmapFilename.empty()) {
     bool ret = LoadEnvMap(envmapFilename, envmapCoord);
+  }
+
+  if (!materialFilename.empty()) {
+    ptex_ = new PTexture(materialFilename.c_str());
   }
   return true;
 }

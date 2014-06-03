@@ -1,6 +1,9 @@
 #ifndef __MALLIE_TEXTURE_H__
 #define __MALLIE_TEXTURE_H__
 
+class PtexTexture;
+class PtexFilter;
+
 namespace mallie {
 
 class
@@ -119,13 +122,15 @@ LongLatMapSampler
 class PTexture
 {
 public:
-  PTexture();
+  PTexture(const char *filename);
   ~PTexture();
 
-private:
-#ifdef ENABLE_PTEX
+  void Eval(float *result, int firstChan, int nChannels, int faceid,
+            float u, float v, float uw1, float vw1, float uw2, float vw2) const;
 
-#endif
+private:
+  PtexTexture *m_texture;
+  PtexFilter *m_filter;
 };
 
 } // namespace

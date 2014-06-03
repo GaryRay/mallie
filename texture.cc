@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstdio>
 #include <limits>
 #include <iostream>
 #include "texture.h"
@@ -6,9 +7,7 @@
 
 #ifdef ENABLE_PTEX
 #include <Ptexture.h>
-#endif
 
-#ifdef ENABLE_PTEX
 PtexCache *InitPtex() {
   int maxMem = 1024 * 1024;
   PtexCache *c = PtexCache::create(0, maxMem);
@@ -20,7 +19,7 @@ PtexTexture *LoadPtex(PtexCache *cache, const char *filename) {
   Ptex::String err;
   PtexTexture *r = PtexTexture::open(filename, err, /* premult */ 0);
 
-  printf("[Mallie] PtexTexture: %p\n", r);
+  printf("[Mallie] PtexTexture: %p %s\n", r, filename);
 
   if (!r) {
     std::cerr << err.c_str() << std::endl;
@@ -30,6 +29,37 @@ PtexTexture *LoadPtex(PtexCache *cache, const char *filename) {
   return r;
 }
 #endif
+
+namespace mallie {
+PTexture::PTexture(const char *filename) : m_texture(NULL), m_filter(NULL) {
+#ifdef ENABLE_PTEX
+  PtexCache *cache = InitPtex(); // todo: free cache
+  m_texture = LoadPtex(cache, (const char *)filename);
+
+  PtexFilter::Options opts(PtexFilter::f_point);
+  m_filter = PtexFilter::getFilter(m_texture, opts);
+#endif
+}
+
+PTexture::~PTexture() {
+#ifdef ENABLE_PTEX
+  m_filter->release();
+  m_texture->release();
+#endif
+}
+
+void PTexture::Eval(float *result, int firstChan, int nChannels, int faceid,
+                    float u, float v, float uw1, float vw1, float uw2, float vw2) const {
+#ifdef ENABLE_PTEX
+  if (m_filter) {
+    m_filter->eval(result, firstChan, nChannels, faceid, u, v, uw1, vw1, uw2, uw2);
+    return;
+  }
+#endif
+  result[0] = result[1] = result[2] = result[3] = 1.0f;
+}
+
+}
 
 namespace {
 

@@ -73,6 +73,8 @@ public:
 
   const Texture &GetEnvMap() const { return envMap_; }
 
+  const PTexture *GetPTexture() const { return ptex_; }
+
 protected:
   BVHAccel accel_;
   Mesh mesh_;
@@ -81,6 +83,8 @@ protected:
   Shader shader_;
 
   Texture envMap_; // Environment map(Assume angular map coordinte)
+
+  PTexture *ptex_;
 
   PatchAccel *patch_accel_;
 };
