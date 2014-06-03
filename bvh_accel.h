@@ -69,7 +69,7 @@ public:
   bool Load(const char *filename);
 
   ///< Traverse into BVH along ray and find closest hit point if found
-  bool Traverse(Intersection &isect, const Mesh *mesh, Ray &ray);
+  bool Traverse(Intersection &isect, const Mesh *mesh, Ray &ray) const;
 
   const std::vector<BVHNode> &GetNodes() const { return nodes_; }
   const std::vector<unsigned int> &GetIndices() const { return indices_; }
@@ -82,7 +82,7 @@ private:
   BVHBuildOptions options_;
   std::vector<BVHNode> nodes_;
   std::vector<unsigned int> indices_; // max 4G triangles.
-  BVHBuildStatistics stats_;
+  mutable BVHBuildStatistics stats_;
 };
 
 #endif // __BVH_ACCEL_H__

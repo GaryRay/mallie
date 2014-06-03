@@ -263,9 +263,11 @@ void GenLightPath(Scene &scene, int numPhotons) {
   }
 }
 
-real3 PathTrace(Scene &scene, const Camera &camera, const RenderConfig &config,
-                std::vector<float> &image, // RGB
-                std::vector<int> &count, int px, int py, int step) {
+} // namespace
+
+#if 0
+real3 PathTrace(const Scene &scene, const Camera &camera,
+                int px, int py) {
   //
   // 1. Sample eye(E0)
   //
@@ -348,6 +350,100 @@ real3 PathTrace(Scene &scene, const Camera &camera, const RenderConfig &config,
 
   return radiance;
 }
+#endif
+real3 PathTrace(const Scene &scene, const Camera &camera,
+                const Intersection& s, const Ray& inRay) {
+
+  real3 throughput;
+  real3 radiance = real3(0.0, 0.0, 0.0);
+  unsigned int pathLength = 1;
+  bool lastSpecular = true;
+  double lastPdfW = 1.0;
+
+  Intersection isect;
+  Ray ray;
+
+  {
+    isect.t = kFar;
+
+    double r = randomreal();
+    real3 sampledDir;
+
+    // faceforward.
+    real3 n = s.normal;
+    double ndoti = vdot(s.normal, inRay.dir.neg());
+    if (ndoti < 0.0) {
+      n = n.neg();
+    }
+    double pdf = SampleDiffuseIS(sampledDir, n);
+
+    ray.org = s.position + kEPS * sampledDir;
+    ray.dir = sampledDir;
+  }
+
+  real3 kLight = real3(0,1,0);
+
+  for (;; ++pathLength) {
+    bool hit = scene.Trace(isect, ray);
+    if (!hit) {
+
+      if (pathLength < kMinPathLength) {
+        // eye -> background hit.
+        break;
+      }
+
+      //real3 nf = isect.normal;
+      //if(vdot(nf,ray.dir)>0)nf=nf.neg();
+      //real kl = vdot(kLight, nf)+0.5;
+      //real3 nf2 = (nf+real3(1,1,1))*0.5;
+      //radiance = real3(kl, kl, kl)*nf2;
+      //return radiance;
+
+      // Hit background.
+#if 1
+      real3 kd = real3(0.5, 0.5, 0.5);
+#else
+      real is = std::max(0.05, ray.dir.y);
+      real3 kd = real3(is, is, is);
+#endif
+      radiance += kd / real3(pathLength, pathLength, pathLength);
+    }
+
+    // ptex
+    //return real3(isect.u, isect.v, isect.faceID*0.001);
+
+    if (pathLength >= kMaxPathLength) {
+      break;
+    }
+
+    real3 hitP = ray.org + isect.t * ray.dir;
+
+    // 2. Next event estimation
+    {}
+
+    // 3. Continue path tracing.
+    {
+      double r = randomreal();
+      real3 sampledDir;
+
+      // faceforward.
+      real3 n = isect.normal;
+      double ndoti = vdot(isect.normal, ray.dir.neg());
+      if (ndoti < 0.0) {
+        n = n.neg();
+      }
+      double pdf = SampleDiffuseIS(sampledDir, n);
+
+      // throughput *= factor * (cosThetaOut / pdf);
+
+      ray.org = hitP + kEPS * sampledDir;
+      ray.dir = sampledDir;
+
+      isect.t = kFar;
+    }
+  }
+
+  return radiance;
 }
 
 void Render(Scene &scene, const RenderConfig &config,

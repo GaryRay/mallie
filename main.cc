@@ -241,6 +241,10 @@ int main(int argc, char **argv) {
   printf("Mallie:info\tmsg:Enable OSD patch\n");
 #endif
 
+#ifdef ENABLE_PTEX
+  printf("Mallie:info\tmsg:Enable Ptex\n");
+#endif
+
   if (sizeof(real) == 4) {
     printf("Mallie:info\tmsg:Precision 32bit float\n");
   } else {

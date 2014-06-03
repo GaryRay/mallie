@@ -80,6 +80,7 @@ struct Ray {
   real3 dir;
   real3 invDir;
   int dirSign[3];
+  float px, py;   // pixel position
 };
 
 #endif // __COMMON_H__

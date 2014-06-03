@@ -641,8 +641,8 @@ const int kMaxStackDepth = 512;
 
 inline bool IntersectRayAABB(real &tminOut, // [out]
                              real &tmaxOut, // [out]
-                             real maxT, real bmin[3], real bmax[3],
-                             real3 rayOrg, real3 rayInvDir, int rayDirSign[3]) {
+                             real maxT, const real bmin[3], const real bmax[3],
+                             real3 rayOrg, real3 rayInvDir, const int rayDirSign[3]) {
   real tmin, tmax;
 
   const real min_x = rayDirSign[0] ? bmax[0] : bmin[0];
@@ -953,7 +953,7 @@ void BuildIntersection(Intersection &isect, const Mesh *mesh, Ray &ray) {
 
 } // namespace
 
-bool BVHAccel::Traverse(Intersection &isect, const Mesh *mesh, Ray &ray) {
+bool BVHAccel::Traverse(Intersection &isect, const Mesh *mesh, Ray &ray) const {
   real hitT = std::numeric_limits<real>::max(); // far = no hit.
 
   int nodeStackIndex = 0;
@@ -987,7 +987,7 @@ bool BVHAccel::Traverse(Intersection &isect, const Mesh *mesh, Ray &ray) {
   real minT, maxT;
   while (nodeStackIndex >= 0) {
     int index = nodeStack[nodeStackIndex];
-    BVHNode &node = nodes_[index];
+    const BVHNode &node = nodes_[index];
 
     nodeStackIndex--;
 

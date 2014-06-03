@@ -52,7 +52,7 @@ public:
             const std::string &envmapFilename, const std::string &envmapCoord,
             double sceneScale = 1.0);
 
-  bool Trace(Intersection &isect, Ray &ray);
+  bool Trace(Intersection &isect, Ray &ray) const;
 
   void BoundingBox(real3 &bmin, real3 &bmax);
 

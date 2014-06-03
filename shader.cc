@@ -6,6 +6,13 @@
 
 using namespace mallie;
 
+namespace mallie {
+
+real3 PathTrace(const Scene &scene, const Camera &camera,
+                const Intersection& s, const Ray& inRay); // render.cc
+
+}
+
 namespace {
 
 vector3 reflect(const vector3 &in, const vector3 &n) {
@@ -73,6 +80,7 @@ void fresnel(vector3 &refl, vector3 &refr, float &kr, float &kt,
 
   kt = 1.0f - kr;
 }
+
 }
 
 //
@@ -169,6 +177,18 @@ void PtexShader(float rgba[4], const Scene &scene, const Intersection &isect,
   rgba[3] = 1;
 }
 
+void PathTraceShader(float rgba[4], const Scene &scene, const Intersection &isect,
+                const Ray &ray) {
+
+  real3 col = PathTrace(scene, scene.GetCamera(), isect, ray);
+
+  // ???: negate makes us happy
+  rgba[0] = 1.0f - col[0];
+  rgba[1] = 1.0f - col[1];
+  rgba[2] = 1.0f - col[2];
+  rgba[3] = 1.0;
+}
+
 void YourShader(float rgba[4], const Scene &scene, const Intersection &isect,
                 const Ray &ray) {}
 
@@ -185,6 +205,7 @@ Shader::Shader() {
   RegisterShader(1, EyeDotN);
   RegisterShader(2, EnvShader);
   RegisterShader(3, PtexShader);
+  RegisterShader(4, PathTraceShader);
 
   // @note { Add your shader here! }
 }

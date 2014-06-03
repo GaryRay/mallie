@@ -136,7 +136,7 @@ bool Scene::Init(const std::string &objFilename,
   return true;
 }
 
-bool Scene::Trace(Intersection &isect, Ray &ray) {
+bool Scene::Trace(Intersection &isect, Ray &ray) const {
   if (patch_accel_ == NULL) {
     return accel_.Traverse(isect, &mesh_, ray);
   } else {
