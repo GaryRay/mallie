@@ -993,7 +993,7 @@ namespace mallie{
 		T tmp = p[0];
 		for(int i = 1;i<n;i++){
 			for(int j = 0;j<d;j++){
-				if(tmp[j]>p[i][j])tmp[j]=p[i][j];
+                tmp[j] = (tmp[j]>p[i][j])?p[i][j]:tmp[j];
 			}
 		}
 		return tmp;
@@ -1004,11 +1004,23 @@ namespace mallie{
 		T tmp = p[0];
 		for(int i = 1;i<n;i++){
 			for(int j = 0;j<d;j++){
-				if(tmp[j]<p[i][j])tmp[j]=p[i][j];
+				tmp[j] = (tmp[j]<p[i][j])?p[i][j]:tmp[j];
 			}
 		}
 		return tmp;
 	}
+
+    template<class T, int D>
+    static inline void bezier_minmax_n(T& min, T& max, const T p[], int n){
+        min = max = p[0];
+        for(int i = 1;i<n;i++){
+            for(int j = 0;j<D;j++){
+                min[j] = (min[j]>p[i][j])?p[i][j]:min[j];
+                max[j] = (max[j]<p[i][j])?p[i][j]:max[j];
+            }
+        }
+    }
+
 
 #define DEC_BEZIER_MINMAX(FLOAT)              \
 	FLOAT bezier_min(const FLOAT p[], int n){ \
@@ -1024,7 +1036,14 @@ namespace mallie{
 			if(tmp<p[i])tmp=p[i];             \
 		}                                     \
 		return tmp;                           \
-	}
+    }                                         \
+    void bezier_minmax(FLOAT& min, FLOAT& max, const FLOAT p[], int n){\
+        min = max = p[0];                     \
+        for(int i = 1;i<n;i++){               \
+            min = (min>p[i])?p[i]:min;        \
+            max = (max<p[i])?p[i]:max;        \
+        }                                     \
+    }
 
 	DEC_BEZIER_MINMAX(float)
 	DEC_BEZIER_MINMAX(double)
@@ -1037,7 +1056,10 @@ namespace mallie{
 	}                                         \
 	TYPE bezier_max(const TYPE p[], int n){   \
 		return bezier_max_n(p,n,D);           \
-	}
+	}                                         \
+    void bezier_minmax(TYPE& min, TYPE& max, const TYPE p[], int n){\
+            return bezier_minmax_n<TYPE,D>(min,max,p,n);\
+    }
 
 	DEC_BEZIER_MINMAX(vector2f,2)
 	DEC_BEZIER_MINMAX(vector3f,3)
