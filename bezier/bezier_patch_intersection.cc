@@ -12,7 +12,7 @@
 #include <limits>
 
 //
-#define DIRECT_BILINEAR 1
+#define DIRECT_BILINEAR 0
 #define USE_BEZIERCLIP 1
 #define USE_COARSESORT 1
 
@@ -44,7 +44,7 @@ namespace mallie{
 static const REAL EPS = 1e-4;
 static const REAL EPS2 = std::numeric_limits<float>::min();
 static const REAL UVEPS = 1.0/32.0;
-static const int  MAX_LEVEL = 10;
+static const int  MAX_LEVEL = 20;
     
 #else 
 #define REAL double
@@ -55,7 +55,7 @@ static const int  MAX_LEVEL = 10;
 static const REAL EPS = 1e-5;
 static const REAL EPS2 = std::numeric_limits<double>::min();
 static const REAL UVEPS = 1.0/32.0;
-static const int  MAX_LEVEL = 10;
+static const int  MAX_LEVEL = 20;
 
 #endif
 
@@ -553,20 +553,22 @@ static const int  MAX_LEVEL = 10;
 	        		}
 	        	}
 	        }
-	        if(k<0)return 0;
-	        current = 0;
-	        for(int i = 0;i<k;i++)
-	        {
-	        	if(p[i][1]*p[k][1]<0){
-	        		float s = slope(p[i], p[k]);
-	        		if(current<s){
-	        			current = s;
-	        			l = i;
-	        		}
-	        	}
-	        }
-	        if(l<0)return 0;
-            ts[n++] = dist(p[l],p[k]);
+	        if(k>=0){
+    	        current = 0;
+    	        for(int i = 0;i<k;i++)
+    	        {
+    	        	if(p[i][1]*p[k][1]<0){
+    	        		float s = slope(p[i], p[k]);
+    	        		if(current<s){
+    	        			current = s;
+    	        			l = i;
+    	        		}
+    	        	}
+    	        }
+    	        if(l>=0){
+                    ts[n++] = dist(p[l],p[k]);
+                }
+            }
         }
         {
 	        int k = -1;
@@ -583,20 +585,22 @@ static const int  MAX_LEVEL = 10;
 	        		}
 	        	}
 	        }
-	        if(k<0)return 0;
-	        current = 0;
-	        for(int i = k+1;i<sz;i++)
-	        {
-	        	if(p[i][1]*p[k][1]<0){
-	        		float s = slope(p[i], p[k]);
-	        		if(current<s){
-	        			current = s;
-	        			l = i;
-	        		}
-	        	}
-	        }
-	        if(l<0)return 0;
-            ts[n++] = dist(p[k],p[l]);
+	        if(k>=0){
+    	        current = 0;
+    	        for(int i = k+1;i<sz;i++)
+    	        {
+    	        	if(p[i][1]*p[k][1]<0){
+    	        		float s = slope(p[i], p[k]);
+    	        		if(current<s){
+    	        			current = s;
+    	        			l = i;
+    	        		}
+    	        	}
+    	        }
+    	        if(l>=0){
+                    ts[n++] = dist(p[k],p[l]);
+                }
+            }
         }
         
      	return n;   
@@ -643,15 +647,17 @@ static const int  MAX_LEVEL = 10;
 	template<class VECTOR>
     static bool x_check(REAL rng[2], const VECTOR& curve)
     {
-        REAL t[2] = {0};
+        REAL t[4] = {0};
         int nn = scan_convex(t, curve);
         if(nn){
-            if(nn != 2)return false;
 
             float t0 = t[0];
-            float t1 = t[1];
+            float t1 = t[0];
 
-            if(t0>t1)std::swap(t0,t1);
+            for(int i=1;i<nn;i++){
+                t0 = std::min(t0, t[i]);
+                t1 = std::min(t1, t[i]); 
+            }
 
             rng[0] = t0;
             rng[1] = t1;
@@ -831,12 +837,8 @@ static const int  MAX_LEVEL = 10;
 	            }
 	
 	            if(x_check(rng,curve)){
-	                if(rng[1]-rng[0]<delta){
-	                    t0 = std::min(t0,rng[0]);
-	                    t1 = std::max(t1,rng[1]);
-	                }else{
-	                    return false;
-	                }
+                    t0 = std::min(t0,rng[0]);
+                    t1 = std::max(t1,rng[1]);
 	            }else{
 	                return false;
 	            }
@@ -854,12 +856,8 @@ static const int  MAX_LEVEL = 10;
 	            }
 	
 	            if(x_check(rng,curve)){
-	                if(rng[1]-rng[0]<delta){
-	                    t0 = std::min(t0,rng[0]);
-	                    t1 = std::max(t1,rng[1]);
-	                }else{
-	                    return false;
-	                }
+                    t0 = std::min(t0,rng[0]);
+                    t1 = std::max(t1,rng[1]);
 	            }else{
 	                return false;
 	            }
@@ -893,12 +891,8 @@ static const int  MAX_LEVEL = 10;
 	                curve[j][1] = (patch.get_cp_at(i,j))[1];
 	            }
 	            if(x_check(rng,curve)){
-	                if(rng[1]-rng[0]<delta){
-	                    t0 = std::min(t0,rng[0]);
-	                    t1 = std::max(t1,rng[1]);
-	                }else{
-	                    return false;
-	                }
+                    t0 = std::min(t0,rng[0]);
+                    t1 = std::max(t1,rng[1]);
 	            }else{
 	                return false;
 	            }
@@ -916,12 +910,8 @@ static const int  MAX_LEVEL = 10;
 	                curve[j][1] = (patch.get_cp_at(i,j))[1];
 	            }
 	            if(x_check(rng,curve)){
-	                if(rng[1]-rng[0]<delta){
-	                    t0 = std::min(t0,rng[0]);
-	                    t1 = std::max(t1,rng[1]);
-	                }else{
-	                    return false;
-	                }
+                    t0 = std::min(t0,rng[0]);
+                    t1 = std::max(t1,rng[1]);
 	            }else{
 	                return false;
 	            }
@@ -1072,13 +1062,6 @@ static const int  MAX_LEVEL = 10;
     static 
     inline bool is_eps(const vector3x& min, const vector3x& max, float eps)
     {
-        //float zw = max[2]-min[2];
-        //if(zw<=eps)return true;
-        
-        REAL xd = std::max<REAL>(fabs(min[0]),max[0]);
-        REAL yd = std::max<REAL>(fabs(min[1]),max[1]);
-        if(!(xd<=eps&&yd<=eps))return false;
-
         REAL xw = max[0]-min[0];
         REAL yw = max[1]-min[1];
         //
@@ -1155,14 +1138,14 @@ static const int  MAX_LEVEL = 10;
         if(0<min[1] || max[1]<0)return false;//y
         if(max[2]<zmin || zmax<min[2])return false;//z
         //if(max[0]-min[0]<=EPS2)return false;
-        if(max[1]-min[1]<=EPS2)return false;
+        //if(max[1]-min[1]<=EPS2)return false;
 
         if( is_eps(min,max,eps) || is_level(level,max_level) ){
             return test_bezier_clip_l(patch, u0, u1, v0, v1, zmin, zmax);
         }else{
             REAL tw = 1;
-            REAL tt0 = 1;
-            REAL tt1 = 0;
+            REAL tt0 = 0;
+            REAL tt1 = 1;
 #if USE_BEZIERCLIP
             if(is_clip(level,tpatch.get_nu())){
                 REAL rng[2];
@@ -1213,14 +1196,14 @@ static const int  MAX_LEVEL = 10;
         if(0<min[1] || max[1]<0)return false;//y
         if(max[2]<zmin || zmax<min[2])return false;//z
         //if(max[0]-min[0]<=EPS2)return false;
-        if(max[1]-min[1]<=EPS2)return false;
+        //if(max[1]-min[1]<=EPS2)return false;
 
         if( is_eps(min,max,eps) || is_level(level,max_level) ){
             return test_bezier_clip_l(patch, u0, u1, v0, v1, zmin, zmax);
         }else{
             REAL tw = 1;
-            REAL tt0 = 1;
-            REAL tt1 = 0;
+            REAL tt0 = 0;
+            REAL tt1 = 1;
 #if USE_BEZIERCLIP
             if(is_clip(level,tpatch.get_nv())){
                 REAL rng[2];
@@ -1272,14 +1255,14 @@ static const int  MAX_LEVEL = 10;
         if(0<min[1] || max[1]<0)return false;//y
         if(max[2]<zmin || zmax<min[2])return false;//z
         //if(max[0]-min[0]<=EPS2)return false;
-        if(max[1]-min[1]<=EPS2)return false;
+        //if(max[1]-min[1]<=EPS2)return false;
 
         if( is_eps(min,max,eps) || is_level(level,max_level) ){
             return test_bezier_clip_l(info, patch, u0, u1, v0, v1, zmin, zmax);
         }else{
             REAL tw = 1;
-            REAL tt0 = 1;
-            REAL tt1 = 0;
+            REAL tt0 = 0;
+            REAL tt1 = 1;
 #if USE_BEZIERCLIP
             if(is_clip(level,tpatch.get_nu())){
                 REAL rng[2];
@@ -1332,14 +1315,14 @@ static const int  MAX_LEVEL = 10;
         if(0<min[1] || max[1]<0)return false;//y
         if(max[2]<zmin || zmax<min[2])return false;//z
         //if(max[0]-min[0]<=EPS2)return false;
-        if(max[1]-min[1]<=EPS2)return false;
+        //if(max[1]-min[1]<=EPS2)return false;
 
         if( is_eps(min,max,eps) || is_level(level,max_level) ){
             return test_bezier_clip_l(info, patch, u0, u1, v0, v1, zmin, zmax);
         }else{
             REAL tw = 1;
-            REAL tt0 = 1;
-            REAL tt1 = 0;
+            REAL tt0 = 0;
+            REAL tt1 = 1;
 #if USE_BEZIERCLIP
             if(is_clip(level,tpatch.get_nv())){
                 REAL rng[2];
