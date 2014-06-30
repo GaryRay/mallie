@@ -656,7 +656,7 @@ static const int  MAX_LEVEL = 20;
 
             for(int i=1;i<nn;i++){
                 t0 = std::min(t0, t[i]);
-                t1 = std::min(t1, t[i]); 
+                t1 = std::max(t1, t[i]); 
             }
 
             rng[0] = t0;
