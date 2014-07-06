@@ -51,6 +51,9 @@ MaterialLoader::Load(
       mat.id = id;
       printf("Mallie:debug\tid:%d\n", mat.id);
 
+      mat.diffuse[0] = 0.5;
+      mat.diffuse[1] = 0.5;
+      mat.diffuse[2] = 0.5;
       if (json_value_get_type(json_object_dotget_value(m, "diffuse")) ==
           JSONArray) {
         JSON_Array *array = json_object_dotget_array(m, "diffuse");
@@ -62,6 +65,9 @@ MaterialLoader::Load(
         }
       }
 
+      mat.reflection[0] = 0.0;
+      mat.reflection[1] = 0.0;
+      mat.reflection[2] = 0.0;
       if (json_value_get_type(json_object_dotget_value(m, "reflection")) ==
           JSONArray) {
         JSON_Array *array = json_object_dotget_array(m, "reflection");
@@ -73,10 +79,25 @@ MaterialLoader::Load(
         }
       }
 
+      mat.reflection_glossiness = 1.0;
       if (json_value_get_type(json_object_dotget_value(m, "reflection_glossiness")) ==
           JSONNumber) {
         mat.reflection_glossiness = json_object_dotget_number(m, "reflection_glossiness");
         printf("Mallie:debug\treflection_glossiness:%f\n", mat.reflection_glossiness);
+      }
+
+      mat.fresnel = 0;
+      if (json_value_get_type(json_object_dotget_value(m, "fresnel")) ==
+          JSONBoolean) {
+        mat.fresnel = (int)json_object_dotget_boolean(m, "fresnel");
+        printf("Mallie:debug\tfrensel:%f\n", mat.fresnel);
+      }
+
+      mat.ior = 1.0;
+      if (json_value_get_type(json_object_dotget_value(m, "ior")) ==
+          JSONNumber) {
+        mat.ior = json_object_dotget_number(m, "ior");
+        printf("Mallie:debug\tior:%f\n", mat.ior);
       }
 
       materials[id] = mat;

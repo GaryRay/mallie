@@ -33,22 +33,22 @@ real3 vclamp01(real3 x)
   return ret;
 }
 
-vector3 reflect(const vector3 &in, const vector3 &n) {
-  float d = dot(in, n);
+real3 reflect(const real3 &in, const real3 &n) {
+  float d = vdot(in, n);
   return in - n * (2.0 * d);
 }
 
-vector3 refract(bool &tir, const vector3 &in, const vector3 &n, float eta) {
-  vector3 ret;
-  vector3 N;
+real3 refract(bool &tir, const real3 &in, const real3 &n, float eta) {
+  real3 ret;
+  real3 N;
   double e = eta;
-  double cos1 = dot(in, n);
+  double cos1 = vdot(in, n);
   if (cos1 < 0.0) { // entering
     N = n;
   } else { // outgoing
     cos1 = -cos1;
     e = 1.0f / eta;
-    N = -n;
+    N = n.neg();
   }
 
   double k = 1.0 - (e * e) * (1.0 - cos1 * cos1);
@@ -69,9 +69,9 @@ vector3 refract(bool &tir, const vector3 &in, const vector3 &n, float eta) {
   return ret;
 }
 
-void fresnel(vector3 &refl, vector3 &refr, float &kr, float &kt,
-             const vector3 &in, const vector3 &n, float eta) {
-  float d = dot(in, n);
+void fresnel_factor(real3 &refl, real3& refr, float &kr, float &kt,
+             const real3 &in, const real3 &n, float eta) {
+  float d = vdot(in, n);
 
   refl = reflect(in, n);
 
@@ -84,8 +84,8 @@ void fresnel(vector3 &refl, vector3 &refr, float &kr, float &kt,
     return;
   }
 
-  float cos_r = dot(refl, n);
-  float cos_t = -dot(refr, n);
+  float cos_r = vdot(refl, n);
+  float cos_t = -vdot(refr, n);
 
   float rp = (cos_t - eta * cos_r) / (cos_t + eta * cos_r);
   float rs = (cos_r - eta * cos_t) / (cos_r + eta * cos_t);
@@ -277,10 +277,45 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
   real3 diffuse = mat.diffuse;
   real3 reflection = mat.reflection;
   float reflectionGlossiness = mat.reflection_glossiness;
+  bool  fresnel = mat.fresnel;
+  float ior = mat.ior;
+
+  real3 in, n;
+  in[0] = ray.dir[0];
+  in[1] = ray.dir[1];
+  in[2] = ray.dir[2];
+  in.normalize();
+
+  n[0] = isect.normal[0];
+  n[1] = isect.normal[1];
+  n[2] = isect.normal[2];
+  n.normalize();
+
+  float eta = 1.0 / ior;
+  real3 ns;
 
   real3 one(1.0, 1.0, 1.0);
   real3 ksRGB = reflection;
   real3 kdRGB = vclamp01((one - ksRGB) * diffuse);
+
+  if (fresnel) { // adjust ks and kd energy with fresnel factor.
+    real3 ns = n;
+    float IdotN = vdot(in, ns);
+    if (IdotN < 0.0) { // outside -> inside
+    } else {
+      eta = ior;
+      ns = n.neg();
+    }
+    
+    real3 sDir, tDir;
+    float fresnelKr, fresnelKt;
+    fresnel_factor(sDir, tDir, fresnelKr, fresnelKt, in, ns, eta);
+    // sDir and tDir not used.
+
+    ksRGB = fresnelKr * reflection;
+    kdRGB = vclamp01((one - ksRGB) * diffuse);
+  }
+
   //printf("diff = %f, %f, %f\n", diffuse[0], diffuse[1], diffuse[2]);
   //printf("ks = %f, %f, %f\n", ksRGB[0], ksRGB[1], ksRGB[2]);
   //printf("kd = %f, %f, %f\n", kdRGB[0], kdRGB[1], kdRGB[2]);
@@ -296,19 +331,6 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
     kdRet[1] = kdRGB[1];
     kdRet[2] = kdRGB[2];
   }
-
-  real3 in, n;
-
-  in[0] = ray.dir[0];
-  in[1] = ray.dir[1];
-  in[2] = ray.dir[2];
-  in.normalize();
-
-  n[0] = isect.normal[0];
-  n[1] = isect.normal[1];
-  n[2] = isect.normal[2];
-  n.normalize();
-
 
   // reflection
   if (ks > 0.0) {
@@ -333,12 +355,7 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
 
     } else {
       // perfect specular.
-      vector3 in_0(in[0], in[1], in[2]);
-      vector3 n_0(n[0], n[1], n[2]);
-      vector3 rr = reflect(in_0, n_0);
-      r[0] = rr[0];
-      r[1] = rr[1];
-      r[2] = rr[2];
+      r = reflect(in, n);
     }
 
     float dir[3];
@@ -410,7 +427,7 @@ void EyeDotN(float rgba[4], const Scene &scene, const Intersection &isect,
 
 void EnvShader(float rgba[4], const Scene &scene, const Intersection &isect,
                const Ray &ray) {
-  vector3 in, n;
+  real3 in, n;
 
   in[0] = ray.dir[0];
   in[1] = ray.dir[1];
@@ -422,7 +439,7 @@ void EnvShader(float rgba[4], const Scene &scene, const Intersection &isect,
   n[2] = isect.normal[2];
   n.normalize();
 
-  vector3 r = reflect(in, n);
+  real3 r = reflect(in, n);
 
   float dir[3];
   dir[0] = r[0];

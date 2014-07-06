@@ -14,3 +14,12 @@ glossiness:
 < 1.0 = glossy(low glossiness for low value)
 
 
+fresnel:
+true = do fresnel
+
+
+ior:
+index of refraction.
+
+1.33 = air/water
+
