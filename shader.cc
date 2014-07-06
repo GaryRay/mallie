@@ -29,6 +29,8 @@ real3 vclamp01(real3 x)
   ret[0] = x[0];
   ret[1] = x[1];
   ret[2] = x[2];
+
+  return ret;
 }
 
 vector3 reflect(const vector3 &in, const vector3 &n) {
@@ -279,6 +281,9 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
   real3 one(1.0, 1.0, 1.0);
   real3 ksRGB = reflection;
   real3 kdRGB = vclamp01((one - ksRGB) * diffuse);
+  //printf("diff = %f, %f, %f\n", diffuse[0], diffuse[1], diffuse[2]);
+  //printf("ks = %f, %f, %f\n", ksRGB[0], ksRGB[1], ksRGB[2]);
+  //printf("kd = %f, %f, %f\n", kdRGB[0], kdRGB[1], kdRGB[2]);
 
   float ks = vavg(ksRGB); ks = std::min(1.0f, std::max(0.0f, ks));
   float kd = vavg(kdRGB); kd = std::min(1.0f, std::max(0.0f, kd));
@@ -286,6 +291,7 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
   real3 kdRet(0.0, 0.0, 0.0);
   real3 ksRet(0.0, 0.0, 0.0);
   if (kd > 0.0) {
+    // @todo { path trace }
     kdRet[0] = kdRGB[0];
     kdRet[1] = kdRGB[1];
     kdRet[2] = kdRGB[2];

@@ -1,0 +1,16 @@
+Physically based shader
+
+kd + ks + kt <= 1.0(per channel)
+
+expression:
+
+ks = reflection
+kd = (1.0 - ks) * diffuse
+
+
+glossiness:
+
+1.0   = perfect reflectio
+< 1.0 = glossy(low glossiness for low value)
+
+
