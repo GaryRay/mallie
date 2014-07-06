@@ -832,6 +832,7 @@ bool TestLeafNode(Intersection &isect, // [inout]
     if (PatchIsect(isect, bv, tr)) {
       // Update isect state
       isect.faceID = faceIdx;
+      isect.matID  = 0; // @fixme
       hit = true;
     }
 #else
@@ -859,6 +860,7 @@ bool TestLeafNode(Intersection &isect, // [inout]
       isect.u = u;
       isect.v = v;
       isect.faceID = faceIdx;
+      isect.matID = mesh->material_ids[faceIdx];
       hit = true;
     }
 #endif

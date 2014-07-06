@@ -5,7 +5,9 @@
 
 struct Material {
   real3 diffuse;
-  int id;
+  real3 reflection;
+  real  reflection_glossiness;
+  int   id;
 };
 
 #endif // __MALLIE_MATERIAL_H__

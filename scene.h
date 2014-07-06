@@ -49,6 +49,7 @@ public:
   // Fixme.
   bool Init(const std::string &objFilename, const std::string &esonFilename,
             const std::string &materialFilename,
+            const std::string &ptexFilename,
             const std::string &envmapFilename, const std::string &envmapCoord,
             double sceneScale = 1.0);
 
@@ -70,6 +71,9 @@ public:
   Shader &GetShader() { return shader_; }
 
   bool LoadEnvMap(const std::string &filename, const std::string& coord);
+
+  // JSON format material loader.
+  bool LoadMaterial(const std::string& filename);
 
   const Texture &GetEnvMap() const { return envMap_; }
 

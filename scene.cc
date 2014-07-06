@@ -5,6 +5,7 @@
 #include "importers/eson.h"
 #include "importers/mesh_loader.h"
 #include "importers/patch_loader.h"
+#include "importers/material_loader.h"
 #include "scene.h"
 #include "texture.h"
 #include "timerutil.h"
@@ -39,6 +40,7 @@ Scene::~Scene() {
 bool Scene::Init(const std::string &objFilename,
                  const std::string &esonFilename,
                  const std::string &materialFilename,
+                 const std::string &ptexFilename,
                  const std::string &envmapFilename,
                  const std::string &envmapCoord, double sceneScale) {
 
@@ -131,6 +133,11 @@ bool Scene::Init(const std::string &objFilename,
   }
 
   if (!materialFilename.empty()) {
+    MaterialLoader::Load(materials_, materialFilename);
+    printf("Mallie:info\tnum_materials:%d\n", materials_.size());
+  }
+
+  if (!ptexFilename.empty()) {
     ptex_ = new PTexture(materialFilename.c_str());
   }
   return true;

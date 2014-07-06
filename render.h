@@ -33,6 +33,7 @@ struct RenderConfig {
   std::string eson_filename;
   std::string material_filename;
   std::string envmap_filename;
+  std::string ptex_filename;
   std::string envmap_coord; // "longlat" or "angularmap"
 
   float display_gamma;

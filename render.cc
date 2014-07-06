@@ -57,6 +57,54 @@ struct PathVertex {
 
 typedef std::vector<PathVertex> Path;
 
+unsigned int gSeed[1024][4];
+
+void init_randomreal(void) {
+#if _OPENMP
+  assert(omp_get_max_threads() < 1024);
+
+  for (int i = 0; i < omp_get_max_threads(); i++) {
+    gSeed[i][0] = 123456789 + i;
+    gSeed[i][1] = 362436069;
+    gSeed[i][2] = 521288629;
+    gSeed[i][3] = 88675123;
+  }
+#else
+#endif
+}
+
+double randomreal(void) {
+// xorshift RNG
+#ifdef _OPENMP
+  int tid = omp_get_thread_num();
+  unsigned int x = gSeed[tid][0];
+  unsigned int y = gSeed[tid][1];
+  unsigned int z = gSeed[tid][2];
+  unsigned int w = gSeed[tid][3];
+  unsigned t = x ^ (x << 11);
+  x = y;
+  y = z;
+  z = w;
+  w = (w ^ (w >> 19)) ^ (t ^ (t >> 8));
+
+  gSeed[tid][0] = x;
+  gSeed[tid][1] = y;
+  gSeed[tid][2] = z;
+  gSeed[tid][3] = w;
+  return w * (1.0 / 4294967296.0);
+#else
+  // @fixme { don't use __thread keyword? }
+  static unsigned int THREAD_TLS x = 123456789, y = 362436069, z = 521288629,
+                                 w = 88675123;
+  unsigned t = x ^ (x << 11);
+  x = y;
+  y = z;
+  z = w;
+  w = (w ^ (w >> 19)) ^ (t ^ (t >> 8));
+  return w * (1.0 / 4294967296.0);
+#endif
+}
+
 namespace {
 
 #ifdef ENABLE_PTEX
@@ -105,53 +153,6 @@ void PtexTest(PtexTexture* r)
 }
 #endif // ENABLE_PTEX
 
-unsigned int gSeed[1024][4];
-
-inline void init_randomreal(void) {
-#if _OPENMP
-  assert(omp_get_max_threads() < 1024);
-
-  for (int i = 0; i < omp_get_max_threads(); i++) {
-    gSeed[i][0] = 123456789 + i;
-    gSeed[i][1] = 362436069;
-    gSeed[i][2] = 521288629;
-    gSeed[i][3] = 88675123;
-  }
-#else
-#endif
-}
-
-inline double randomreal(void) {
-// xorshift RNG
-#ifdef _OPENMP
-  int tid = omp_get_thread_num();
-  unsigned int x = gSeed[tid][0];
-  unsigned int y = gSeed[tid][1];
-  unsigned int z = gSeed[tid][2];
-  unsigned int w = gSeed[tid][3];
-  unsigned t = x ^ (x << 11);
-  x = y;
-  y = z;
-  z = w;
-  w = (w ^ (w >> 19)) ^ (t ^ (t >> 8));
-
-  gSeed[tid][0] = x;
-  gSeed[tid][1] = y;
-  gSeed[tid][2] = z;
-  gSeed[tid][3] = w;
-  return w * (1.0 / 4294967296.0);
-#else
-  // @fixme { don't use __thread keyword? }
-  static unsigned int THREAD_TLS x = 123456789, y = 362436069, z = 521288629,
-                                 w = 88675123;
-  unsigned t = x ^ (x << 11);
-  x = y;
-  y = z;
-  z = w;
-  w = (w ^ (w >> 19)) ^ (t ^ (t >> 8));
-  return w * (1.0 / 4294967296.0);
-#endif
-}
 
 static void GenerateBasis(real3 &tangent, real3 &binormal,
                           const real3 &normal) {

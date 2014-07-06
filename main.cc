@@ -94,7 +94,7 @@ static int GetNumCPUs() {
 
 bool InitScene(mallie::Scene &scene, mallie::RenderConfig &config) {
   return scene.Init(config.obj_filename, config.eson_filename,
-                    config.material_filename, config.envmap_filename, config.envmap_coord, config.scene_scale);
+                    config.material_filename, config.ptex_filename, config.envmap_filename, config.envmap_coord, config.scene_scale);
 }
 
 bool LoadJSONConfig(mallie::RenderConfig &config, // [out]
@@ -130,6 +130,12 @@ bool LoadJSONConfig(mallie::RenderConfig &config, // [out]
           object, "material_filename")) == JSONString) {
     config.material_filename =
         json_object_dotget_string(object, "material_filename");
+  }
+
+  if (json_value_get_type(json_object_dotget_value(
+          object, "ptex_filename")) == JSONString) {
+    config.ptex_filename =
+        json_object_dotget_string(object, "ptex_filename");
   }
 
   if (json_value_get_type(json_object_dotget_value(object, "scene_scale")) ==

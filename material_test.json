@@ -1,0 +1,11 @@
+[{"index" : 0,
+  "diffuse" : [1, 0, 0],
+  "reflection" : [0.5, 0.5, 0.5],
+  "reflection_glossiness" : 0.99
+ },
+ {"index" : 1,
+  "diffuse" : [0, 1, 0],
+  "reflection" : [1, 1, 1],
+  "reflection_glossiness" : 2.0
+ }
+]
