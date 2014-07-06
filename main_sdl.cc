@@ -20,6 +20,7 @@
 #include "render.h"
 #include "tinythread.h"
 #include "script_engine.h"
+#include "jpge.h"
 
 #if defined(_WIN32) && !defined(_USE_MATH_DEFINES)
 #define _USE_MATH_DEFINES
@@ -56,7 +57,6 @@ static double gRotate[3] = {0.0f, 0.0f, 0.0f};
 static double gOrigin[3], gCorner[3], gDu[3], gDv[3];
 
 static double gIntensity = 1.0;
-static double gTransferOffset = 0.0;
 
 static int gShaderIndex = 0;
 
@@ -71,6 +71,7 @@ static bool gRenderCancel = false;
 
 int gWidth = 256;
 int gHeight = 256;
+float gGamma = 1.0f;
 
 // SDL_Surface* gSurface = NULL;
 SDL_Window *gWindow = NULL;
@@ -87,6 +88,67 @@ typedef struct {
   Scene *scene;
   const RenderConfig *config;
 } RenderContext;
+
+inline unsigned char fclamp(float x) {
+  int i = x * 255.5;
+  if (i < 0)
+    return 0;
+  if (i > 255)
+    return 255;
+  return (unsigned char)i;
+}
+
+inline float gamma_correct(float x, float inv_gamma) {
+  return pow(x, inv_gamma);
+}
+
+
+void HDRToLDR(std::vector<unsigned char> &out, const std::vector<float> &in,
+              int width, int height) {
+  out.resize(width * height * 3);
+  assert(in.size() == (width * height * 3));
+
+  float inv_gamma = 1.0 / gGamma;
+
+  // Simple [0, 1] -> [0, 255]
+  for (int i = 0; i < width * height * 3; i++) {
+    out[i] = fclamp(gamma_correct(in[i], inv_gamma));
+  }
+}
+
+void SaveAsJPEG(const char *filename)
+{
+
+  tthread::lock_guard<tthread::mutex> guard(gRenderThreadMutex);
+
+  int ret = SDL_LockMutex(gMutex);
+  assert(ret == 0);
+
+  std::vector<unsigned char> ldr;
+
+  ldr.resize(gWidth * gHeight * 3);
+
+  SDL_LockSurface(gSurface);
+
+  unsigned char *data = (unsigned char *)gSurface->pixels;
+
+  for (int i = 0; i < gWidth * gHeight; i++) {
+    ldr[3*i+0] = data[4*i+2];
+    ldr[3*i+1] = data[4*i+1];
+    ldr[3*i+2] = data[4*i+0];
+  }
+
+  SDL_UnlockSurface(gSurface);
+  SDL_UnlockMutex(gMutex);
+
+  jpge::params comp_params;
+  comp_params.m_quality = 100;
+  ret = jpge::compress_image_to_jpeg_file(filename, gWidth, gHeight, 3,
+                                               &ldr.at(0), comp_params);
+  assert(ret);
+
+  printf("Save %s\n", filename);
+}
 
 void RequestRedraw() {
   tthread::lock_guard<tthread::mutex> guard(gRenderThreadMutex);
@@ -161,19 +223,6 @@ static void ClearCount(std::vector<int> &img) {
   for (size_t i = 0; i < img.size(); i++) {
     img[i] = 0;
   }
-}
-
-inline unsigned char fclamp(float x) {
-  int i = x * 255.5;
-  if (i < 0)
-    return 0;
-  if (i > 255)
-    return 255;
-  return (unsigned char)i;
-}
-
-inline float gamma_correct(float x, float inv_gamma) {
-  return pow(x, inv_gamma);
 }
 
 void SaveCamera(const std::string &filename) {
@@ -361,16 +410,9 @@ bool HandleKey(Scene& scene, SDL_Event e) {
       RequestRedraw();
       break;
     case 'j':
-      gTransferOffset -= 0.02f;
-      if (gTransferOffset < 0.0f) {
-        gTransferOffset = 0.0f;
-      }
-      RequestRedraw();
+      SaveAsJPEG("output.jpg");
       break;
-    case 'k':
-      gTransferOffset += 0.02f;
-      RequestRedraw();
-      break;
+
     case SDLK_LSHIFT:
       gShiftPressed = true;
       break;
@@ -517,6 +559,8 @@ static void Init(const RenderConfig &config) {
   // printf("[Mallie] lookat = %f, %f, %f\n", gLookat[0], gLookat[1],
   // gLookat[2]);
   // printf("[Mallie] up     = %f, %f, %f\n", gUp[0], gUp[1], gUp[2]);
+
+  gGamma = config.display_gamma;
 }
 
 time_t GetCurrentRenderClock() {
