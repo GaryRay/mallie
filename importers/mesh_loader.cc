@@ -197,14 +197,16 @@ MeshLoader::LoadESON(
   }
 
   if (material_ids) {
-    assert(0); // @todo
-    //for (size_t i = 0; i < num_faces; i++) {
-    //  mesh.materialIDs[i] = material_ids[i];
-    //}
+    //exit(1);
+    //assert(0); // @todo
+    for (size_t i = 0; i < num_bezier_patches; i++) {
+      //printf("m[%d] = %d\n", i, material_ids[i]);
+      mesh.materialIDs[i] = material_ids[i];
+    }
   } else {
-    //for (size_t i = 0; i < num_faces; i++) {
-    //  mesh.materialIDs[i] = 0; // 0 = default material.
-    //}
+    for (size_t i = 0; i < num_bezier_patches; i++) {
+      mesh.materialIDs[i] = 0; // 0 = default material.
+    }
   }
 #else
   mesh.numFaces     = num_faces;
