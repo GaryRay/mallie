@@ -6,6 +6,7 @@
 #include <iostream>
 #include <ctime>
 #include <algorithm>
+#include <limits>
 
 #if defined(_WIN32) && !defined(_USE_MATH_DEFINES)
 #define _USE_MATH_DEFINES
@@ -19,6 +20,7 @@
 #include "scene.h"
 #include "script_engine.h"
 #include "shader.h"
+#include "prim-plane.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -56,6 +58,20 @@ struct PathVertex {
 };
 
 typedef std::vector<PathVertex> Path;
+
+// HACK: SGA14 TechBrief
+Plane gPlane;
+bool gPlaneInitialied = false;
+
+void init_plane(const real3& sceneBMin, const real3& sceneBMax, int matID)
+{
+  float ymin  = sceneBMin[1];
+  float ysize = sceneBMax[1] - sceneBMin[1];
+  //plane.set(0, 1, 0, -(zmin - zsize * plane_distscale));  
+  gPlane.Set(0, 1, 0, -(ymin - ysize * 0.01), matID);  
+
+  gPlaneInitialied = true;
+}
 
 unsigned int gSeed[1024][4];
 
@@ -104,6 +120,7 @@ double randomreal(void) {
   return w * (1.0 / 4294967296.0);
 #endif
 }
+
 
 namespace {
 
@@ -202,28 +219,6 @@ static void GenerateBasis(real3 &tangent, real3 &binormal,
   }
 }
 
-// Importance sample diffuse BRDF.
-double SampleDiffuseIS(real3 &dir, const real3 &normal) {
-  real3 tangent, binormal;
-
-  GenerateBasis(tangent, binormal, normal);
-
-  double theta = acos(sqrt(1.0 - randomreal()));
-  double phi = 2.0 * M_PI * randomreal();
-
-  double cosTheta = cos(theta);
-
-  /* D = T*cos(phi)*sin(theta) + B*sin(phi)*sin(theta) + N*cos(theta) */
-  double cos_theta = cos(theta);
-  real3 T = tangent * cos(phi) * sin(theta);
-  real3 B = binormal * sin(phi) * sin(theta);
-  real3 N = normal * (cos_theta);
-
-  dir = T + B + N;
-
-  return cos_theta; // PDF = weight
-}
-
 // Mis power (1 for balance heuristic)
 double Mis(double aPdf) { return aPdf; }
 
@@ -237,8 +232,6 @@ void GenEyePath(const Scene &scene, int x, int y) {
   double u0 = randomreal();
   double u1 = randomreal();
 }
-
-void TraceRay(const Scene &scene, Ray &ray) {}
 
 void GenLightPath(Scene &scene, int numPhotons) {
   std::vector<Path> paths;
@@ -264,7 +257,86 @@ void GenLightPath(Scene &scene, int numPhotons) {
   }
 }
 
+void EnvCol(float rgba[4], const Scene &scene, const real3& dir)
+{
+  float d[3];
+  d[0] = dir[0];
+  d[1] = dir[1];
+  d[2] = dir[2];
+
+  if (scene.GetEnvMap().IsValid()) {
+    if (scene.GetEnvMap().coordinate() == Texture::COORDINATE_LONGLAT) {
+      LongLatMapSampler::Sample(rgba, d, &(scene.GetEnvMap()));
+    } else if (scene.GetEnvMap().coordinate() == Texture::COORDINATE_ANGULAR) {
+      AngularMapSampler::Sample(rgba, d, &(scene.GetEnvMap()));
+    } else {
+      rgba[0] = 1.0;
+      rgba[1] = 1.0;
+      rgba[2] = 1.0;
+      rgba[3] = 1.0;
+    }
+
+
+    rgba[0] *= 3.14;
+    rgba[1] *= 3.14;
+    rgba[2] *= 3.14;
+
+  } else {
+
+    rgba[0] = 0.0;
+    rgba[1] = 0.0;
+    rgba[2] = 0.0;
+    rgba[3] = 1.0;
+  }
+}
+
 } // namespace
+
+// Importance sample diffuse BRDF.
+double SampleDiffuseIS(real3 &dir, const real3 &normal) {
+  real3 tangent, binormal;
+
+  GenerateBasis(tangent, binormal, normal);
+
+  double theta = acos(sqrt(1.0 - randomreal()));
+  double phi = 2.0 * M_PI * randomreal();
+
+  double cosTheta = cos(theta);
+
+  /* D = T*cos(phi)*sin(theta) + B*sin(phi)*sin(theta) + N*cos(theta) */
+  double cos_theta = cos(theta);
+  real3 T = tangent * cos(phi) * sin(theta);
+  real3 B = binormal * sin(phi) * sin(theta);
+  real3 N = normal * (cos_theta);
+
+  dir = T + B + N;
+
+  return cos_theta; // PDF = weight
+}
+
+
+bool TraceRay(Intersection& isect, const Scene &scene, Ray &ray) {
+
+  isect.t = std::numeric_limits<real>::max(); // far
+
+  int hit = 0;
+  hit = (int)scene.Trace(isect, ray);
+
+  // plane hit test
+  {
+    Intersection planeIsect; planeIsect.t = std::numeric_limits<real>::max();
+    bool planeHit = gPlane.Intersect(&planeIsect, ray);
+    if (planeHit && (planeIsect.t < isect.t)) {
+      isect = planeIsect;
+    } 
+
+    hit |= (int)planeHit;
+  }
+
+  return (hit ? true : false);
+
+}
+
 
 #if 0
 real3 PathTrace(const Scene &scene, const Camera &camera,
@@ -477,6 +549,26 @@ void Render(Scene &scene, const RenderConfig &config,
 
   init_randomreal();
 
+  if (!gPlaneInitialied) {
+    real3 sceneBMin, sceneBMax;
+    scene.BoundingBox(sceneBMin, sceneBMax);
+
+    Material planeMat;
+    planeMat.diffuse[0] = 1.0;
+    planeMat.diffuse[1] = 1.0;
+    planeMat.diffuse[2] = 1.0;
+    planeMat.reflection[0] = 0.8;
+    planeMat.reflection[1] = 0.8;
+    planeMat.reflection[2] = 0.8;
+    planeMat.fresnel = true;
+    planeMat.ior = 1.33;
+    planeMat.reflection_glossiness = 0.9;
+    size_t planeMatID = scene.AddMaterial(planeMat);
+
+    init_plane(sceneBMin, sceneBMax, planeMatID);
+
+  }
+
   mallie::timerutil t;
   mallie::timerutil tEventTimer;
 
@@ -541,9 +633,11 @@ void Render(Scene &scene, const RenderConfig &config,
       float v = randomreal() - 0.5;
 
       Ray ray = camera.GenerateRay(x + u + step / 2.0f, y + v + step / 2.0f);
+      ray.depth = 0;
 
       Intersection isect;
-      bool hit = scene.Trace(isect, ray);
+      //bool hit = scene.Trace(isect, ray);
+      bool hit = TraceRay(isect, scene, ray);
 
       if (hit) {
 
@@ -562,6 +656,26 @@ void Render(Scene &scene, const RenderConfig &config,
 
 #endif
 
+        // block fill
+        for (int v = 0; v < step; v++) {
+          if (y+v >= height) continue;
+          for (int u = 0; u < step; u++) {
+            if (x+u >= width) continue;
+            for (int k = 0; k < 3; k++) {
+              image[((y + v) * width * 3 + (x + u) * 3) + k] =
+                  image[3 * (y * width + x) + k];
+              count[(y+v) * width + (x+u)]++;
+            }
+          }
+        }
+      } else {
+        // fetch envcolor.
+        float rgba[4];
+        EnvCol(rgba, scene, ray.dir);
+        image[3 * (y * width + x) + 0] = rgba[0];
+        image[3 * (y * width + x) + 1] = rgba[1];
+        image[3 * (y * width + x) + 2] = rgba[2];
+        
         // block fill
         for (int v = 0; v < step; v++) {
           if (y+v >= height) continue;

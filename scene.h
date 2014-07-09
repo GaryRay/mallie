@@ -64,6 +64,12 @@ public:
     return materials_[matID];
   }
 
+  size_t AddMaterial(const Material& mat) {
+    size_t idx = materials_.size();
+    materials_.push_back(mat);
+    return idx;
+  }
+
   void SetCamera(Camera &cam) { camera_ = cam; }
 
   const Camera &GetCamera() const { return camera_; }

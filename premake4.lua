@@ -85,6 +85,8 @@ sources = {
    "shader.cc",
    "shader.h",
    "deps/TinyThread++-1.1/source/tinythread.cpp",
+   "prim-plane.h",
+   "prim-plane.cc",
 }
 
 tinyjs_sources = {

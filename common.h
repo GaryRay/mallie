@@ -79,7 +79,8 @@ struct Ray {
   real3 org;
   real3 dir;
   real3 invDir;
-  int dirSign[3];
+  int   dirSign[3];
+  int   depth;
   float px, py;   // pixel position
 };
 

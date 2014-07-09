@@ -11,6 +11,8 @@ namespace mallie {
 real3 PathTrace(const Scene &scene, const Camera &camera,
                 const Intersection& s, const Ray& inRay); // render.cc
 
+bool TraceRay(Intersection& isect, const Scene &scene, Ray &ray); // render.cc
+double SampleDiffuseIS(real3 &dir, const real3 &normal); // render.cc
 double randomreal(); // render.cc
 
 }
@@ -257,6 +259,39 @@ void WardBRDF(
     }
 }
 
+void EnvCol(float rgba[4], const Scene &scene, const real3& dir)
+{
+  float d[3];
+  d[0] = dir[0];
+  d[1] = dir[1];
+  d[2] = dir[2];
+
+  if (scene.GetEnvMap().IsValid()) {
+    if (scene.GetEnvMap().coordinate() == Texture::COORDINATE_LONGLAT) {
+      LongLatMapSampler::Sample(rgba, d, &(scene.GetEnvMap()));
+    } else if (scene.GetEnvMap().coordinate() == Texture::COORDINATE_ANGULAR) {
+      AngularMapSampler::Sample(rgba, d, &(scene.GetEnvMap()));
+    } else {
+      rgba[0] = 1.0;
+      rgba[1] = 1.0;
+      rgba[2] = 1.0;
+      rgba[3] = 1.0;
+    }
+
+
+    rgba[0] *= 3.14;
+    rgba[1] *= 3.14;
+    rgba[2] *= 3.14;
+
+  } else {
+
+    rgba[0] = 0.0;
+    rgba[1] = 0.0;
+    rgba[2] = 0.0;
+    rgba[3] = 1.0;
+  }
+}
+
 
 }
 
@@ -267,6 +302,15 @@ void WardBRDF(
 // Physically-based shader
 void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
                 const Ray &ray) {
+
+  //printf("depth = %d\n", ray.depth);
+  if (ray.depth > 5) {
+    rgba[0] = 0.01;
+    rgba[1] = 0.01;
+    rgba[2] = 0.01;
+    rgba[3] = 1.0;
+    return;
+  }
 
   // Currently available: diffuse + reflection(+glossy reflection)
 
@@ -327,9 +371,41 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
   real3 ksRet(0.0, 0.0, 0.0);
   if (kd > 0.0) {
     // @todo { path trace }
-    kdRet[0] = kdRGB[0];
-    kdRet[1] = kdRGB[1];
-    kdRet[2] = kdRGB[2];
+
+    real3 newDir;
+    double pdf = SampleDiffuseIS(newDir, n);
+
+    Ray diffuseRay;
+    diffuseRay.dir = newDir;
+    diffuseRay.org = isect.position + 0.001f * newDir;
+    diffuseRay.depth = ray.depth + 1;
+
+    Intersection diffuseIsect;
+    diffuseIsect.t = 1.0e+30;
+    bool hit = TraceRay(diffuseIsect, scene, diffuseRay);
+    if (hit) {
+      float diffuseRGBA[4];
+      PBS(diffuseRGBA, scene, diffuseIsect, diffuseRay);
+
+      kdRet[0] = kdRGB[0] * diffuseRGBA[0];
+      kdRet[1] = kdRGB[1] * diffuseRGBA[1];
+      kdRet[2] = kdRGB[2] * diffuseRGBA[2];
+      kdRet[3] = 1.0; // fixme
+    } else {
+      // env light
+      float rgba[4];
+      EnvCol(rgba, scene, newDir);
+
+      float ndotl = vdot(n, newDir);
+      ndotl = std::max(0.1f, ndotl);
+
+      kdRet[0] = ndotl * kdRGB[0] * rgba[0];
+      kdRet[1] = ndotl * kdRGB[1] * rgba[1];
+      kdRet[2] = ndotl * kdRGB[2] * rgba[2];
+      
+    }
+
+    
   }
 
   // reflection
@@ -511,8 +587,8 @@ Shader::Shader() {
     shaderList_[i] = NULL;
   }
 
-  RegisterShader(0, ShowNormal);
-  //RegisterShader(0, PBS);
+  //RegisterShader(0, ShowNormal);
+  RegisterShader(0, PBS);
   RegisterShader(1, EyeDotN);
   RegisterShader(2, EnvShader);
   RegisterShader(3, PtexShader);
