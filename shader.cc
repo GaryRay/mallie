@@ -304,7 +304,7 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
                 const Ray &ray) {
 
   //printf("depth = %d\n", ray.depth);
-  if (ray.depth > 5) {
+  if (ray.depth > 3) {
     rgba[0] = 0.01;
     rgba[1] = 0.01;
     rgba[2] = 0.01;
@@ -370,7 +370,6 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
   real3 kdRet(0.0, 0.0, 0.0);
   real3 ksRet(0.0, 0.0, 0.0);
   if (kd > 0.0) {
-    // @todo { path trace }
 
     real3 newDir;
     double pdf = SampleDiffuseIS(newDir, n);
@@ -420,14 +419,18 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
       float pdf;
 
       // larget = sharper.
-      float ax = 1000.0f * reflectionGlossiness; // isotropic
-      float ay = 1000.0f * reflectionGlossiness;
+      float ax = 1.0f * (1.0f - reflectionGlossiness); // isotropic
+      float ay = 1.0f * (1.0f - reflectionGlossiness);
 
       real3 wi = in.neg();
 
       WardBRDF(&r, &pdf, &weight, ax, ay, wi, n, n);
       //printf("w = %f, r = %f, %f, %f, n = %f, %f, %f\n",
       //  weight, r[0], r[1], r[2], n[0], n[1], n[2]);
+
+      // HACK
+      r = r.neg();
+      weight = 1.0;
 
     } else {
       // perfect specular.
@@ -439,26 +442,41 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
     dir[1] = r[1];
     dir[2] = r[2];
 
-    if ((weight > 0.0) && scene.GetEnvMap().IsValid()) {
-      float envcol[4];
-      if (scene.GetEnvMap().coordinate() == Texture::COORDINATE_LONGLAT) {
-        LongLatMapSampler::Sample(envcol, dir, &(scene.GetEnvMap()));
-      } else if (scene.GetEnvMap().coordinate() == Texture::COORDINATE_ANGULAR) {
-        AngularMapSampler::Sample(envcol, dir, &(scene.GetEnvMap()));
+    float rmag = r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+
+    if ((weight > 0.0) && (rmag > 0.1)) {
+
+      Ray reflRay;
+      reflRay.dir = r;
+      reflRay.org = isect.position + 0.01f * r;
+      reflRay.depth = ray.depth + 1;
+
+      Intersection reflIsect;
+      reflIsect.t = 1.0e+30;
+      bool hit = TraceRay(reflIsect, scene, reflRay);
+
+      if (hit) {
+
+        float reflRGBA[4];
+        PBS(reflRGBA, scene, reflIsect, reflRay);
+
+        ksRet[0] = ksRGB[0] * reflRGBA[0];
+        ksRet[1] = ksRGB[1] * reflRGBA[1];
+        ksRet[2] = ksRGB[2] * reflRGBA[2];
+        ksRet[3] = 1.0; // fixme
+
       } else {
-        // @todo
-        envcol[0] = 1.0;
-        envcol[1] = 1.0;
-        envcol[2] = 1.0;
+        // env light
+        float rgba[4];
+        EnvCol(rgba, scene, r);
+
+        ksRet[0] = ksRGB[0] * rgba[0];
+        ksRet[1] = ksRGB[1] * rgba[1];
+        ksRet[2] = ksRGB[2] * rgba[2];
       }
 
-      ksRet[0] = envcol[0] * ksRGB[0];
-      ksRet[1] = envcol[1] * ksRGB[1];
-      ksRet[2] = envcol[2] * ksRGB[2];
-
     } else {
-
-      // @todo: Sunsky?
+      // ???
       ksRet[0] = 0.0;
       ksRet[1] = 0.0;
       ksRet[2] = 0.0;
@@ -466,9 +484,9 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
   }
 
   // @fixme.
-  rgba[0] = kdRet[0] + ksRet[0];
-  rgba[1] = kdRet[1] + ksRet[1];
-  rgba[2] = kdRet[2] + ksRet[2];
+  rgba[0] = 0.5*3.14 * (kdRet[0] + ksRet[0]);
+  rgba[1] = 0.5*3.14 * (kdRet[1] + ksRet[1]);
+  rgba[2] = 0.5*3.14 * (kdRet[2] + ksRet[2]);
   rgba[3] = 1.0;
 }
 

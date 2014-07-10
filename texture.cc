@@ -392,6 +392,10 @@ LongLatMapSampler::Sample(
   if (phi < 0.0) phi = 0.0;   // for safety.
   if (phi > 2.0 * M_PI) phi = 2.0 * M_PI;   // for safety.
 
+  // HACK
+  phi += 1.5 * M_PI;
+  if (phi > 2.0 * M_PI) phi -= 2.0 * M_PI; // wrap around.
+
   double z = v[2];
   if (z < -1.0) z = -1.0;
   if (z > 1.0) z = 1.0;

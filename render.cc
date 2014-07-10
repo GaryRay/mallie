@@ -68,7 +68,7 @@ void init_plane(const real3& sceneBMin, const real3& sceneBMax, int matID)
   float ymin  = sceneBMin[1];
   float ysize = sceneBMax[1] - sceneBMin[1];
   //plane.set(0, 1, 0, -(zmin - zsize * plane_distscale));  
-  gPlane.Set(0, 1, 0, -(ymin - ysize * 0.01), matID);  
+  gPlane.Set(0, 1, 0, -(ymin - ysize * 0.0001), matID);  
 
   gPlaneInitialied = true;
 }
@@ -554,15 +554,15 @@ void Render(Scene &scene, const RenderConfig &config,
     scene.BoundingBox(sceneBMin, sceneBMax);
 
     Material planeMat;
-    planeMat.diffuse[0] = 1.0;
-    planeMat.diffuse[1] = 1.0;
-    planeMat.diffuse[2] = 1.0;
+    planeMat.diffuse[0] = 0.0;
+    planeMat.diffuse[1] = 0.0;
+    planeMat.diffuse[2] = 0.0;
     planeMat.reflection[0] = 0.8;
     planeMat.reflection[1] = 0.8;
     planeMat.reflection[2] = 0.8;
     planeMat.fresnel = true;
     planeMat.ior = 1.33;
-    planeMat.reflection_glossiness = 0.9;
+    planeMat.reflection_glossiness = 0.99;
     size_t planeMatID = scene.AddMaterial(planeMat);
 
     init_plane(sceneBMin, sceneBMax, planeMatID);
