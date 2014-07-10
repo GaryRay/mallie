@@ -62,7 +62,7 @@ namespace mallie
 	}
 	bool PatchAccel::Traverse(Intersection &isect, const Ray &ray)
 	{
-		imp_->Traverse(isect, ray);
+		return imp_->Traverse(isect, ray);
 	}
 
 	void PatchAccel::GetBoundingBox(real3 &bmin, real3 &bmax)

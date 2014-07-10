@@ -1,10 +1,12 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <cstdio>
+#include <algorithm>
 
 #include "camera.h"
 #include "matrix.h"
 #include "trackball.h"
+
 
 using namespace mallie;
 
@@ -218,7 +220,7 @@ void Camera::BuildCameraFrame(double origin[3], double corner[3], double u[3],
 static
 real Inverse(real x)
 {
-  std::min(real(1)/x, 1e+16);
+  std::min<real>(real(1)/x, 1e+16);
 }
 
 Ray Camera::GenerateRay(double u, double v) const {
