@@ -21,6 +21,7 @@
 #include "script_engine.h"
 #include "shader.h"
 #include "prim-plane.h"
+#include "feature-lines.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -323,7 +324,7 @@ bool TraceRay(Intersection& isect, const Scene &scene, Ray &ray) {
   hit = (int)scene.Trace(isect, ray);
 
   // plane hit test
-  {
+  if (0) {
     Intersection planeIsect; planeIsect.t = std::numeric_limits<real>::max();
     bool planeHit = gPlane.Intersect(&planeIsect, ray);
     if (planeHit && (planeIsect.t < isect.t)) {
@@ -528,11 +529,11 @@ void Render(Scene &scene, const RenderConfig &config,
   int height = config.height;
   double fov = config.fov;
 
-  std::vector<int> xs;
-  std::vector<int> ys;
-  std::srand(unsigned(std::time(0)));
-  std::random_shuffle(xs.begin(), xs.end());
-  std::random_shuffle(ys.begin(), ys.end());
+  // For Posprocess.
+  std::vector<int>   geomIDBuffer(width*height);
+  memset(&geomIDBuffer.at(0), -1, width*height*sizeof(int)); // -1 = background
+  std::vector<float> normalBuffer(width*height*3);
+  std::vector<float> depthBuffer(width*height);
 
   double origin[3], corner[3], du[3], dv[3];
   Camera camera(eye, lookat, up);
@@ -654,6 +655,12 @@ void Render(Scene &scene, const RenderConfig &config,
         image[3 * (y * width + x) + 1] = rgba[1];
         image[3 * (y * width + x) + 2] = rgba[2];
 
+        geomIDBuffer[(y*width+x)] = isect.faceID;
+        normalBuffer[3*(y*width+x)+0] = isect.normal[0];
+        normalBuffer[3*(y*width+x)+1] = isect.normal[1];
+        normalBuffer[3*(y*width+x)+2] = isect.normal[2];
+        depthBuffer[(y*width+x)] = isect.t;
+
 #endif
 
         // block fill
@@ -666,6 +673,12 @@ void Render(Scene &scene, const RenderConfig &config,
                   image[3 * (y * width + x) + k];
               count[(y+v) * width + (x+u)]++;
             }
+
+            geomIDBuffer[((y+v)*width+(x+u))] = isect.faceID;
+            normalBuffer[3*((y+v)*width+(x+u))+0] = isect.normal[0];
+            normalBuffer[3*((y+v)*width+(x+u))+1] = isect.normal[1];
+            normalBuffer[3*((y+v)*width+(x+u))+2] = isect.normal[2];
+            depthBuffer[((y+v)*width+(x+u))] = isect.t;
           }
         }
       } else {
@@ -692,6 +705,27 @@ void Render(Scene &scene, const RenderConfig &config,
     }
 
 #endif
+  }
+
+
+  // Postprocess
+  if (config.wireframe) {
+    FeatureLineImageSpace featureLineDrawer;
+
+    // filter param
+    float featureLineWidth = 1.0;
+    int N = 2;
+    int h = featureLineWidth;
+
+    std::vector<float> img(width * height);
+    featureLineDrawer.Filter(&img.at(0), &geomIDBuffer.at(0), &normalBuffer.at(0), &depthBuffer.at(0), width, height, N, h);
+
+    // overlay
+    for (int i = 0; i < width * height; i++) {
+      image[3 * i + 0] += img[i];
+      image[3 * i + 1] += img[i];
+      image[3 * i + 2] += img[i];
+    }
   }
 
   t.end();

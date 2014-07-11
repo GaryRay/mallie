@@ -87,6 +87,8 @@ sources = {
    "deps/TinyThread++-1.1/source/tinythread.cpp",
    "prim-plane.h",
    "prim-plane.cc",
+   "feature-lines.h",
+   "feature-lines.cc",
 }
 
 tinyjs_sources = {

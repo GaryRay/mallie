@@ -29,6 +29,8 @@ struct RenderConfig {
   int num_passes;
   int num_photons; // # of photon to shoot per pass.
 
+  bool wireframe;
+
   std::string obj_filename;
   std::string eson_filename;
   std::string material_filename;
@@ -40,7 +42,7 @@ struct RenderConfig {
 
   RenderConfig()
       : fov(60.0), width(512), height(512), scene_scale(1.0), plane(false),
-        num_passes(10), num_photons(10000), display_gamma(2.2f) {
+        num_passes(10), num_photons(10000), display_gamma(2.2f), wireframe(false) {
 
     eye[0] = 0.0;
     eye[1] = 0.0;

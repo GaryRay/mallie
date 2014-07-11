@@ -212,6 +212,11 @@ bool LoadJSONConfig(mallie::RenderConfig &config, // [out]
     config.display_gamma = json_object_dotget_number(object, "display_gamma");
   }
 
+  if (json_value_get_type(json_object_dotget_value(object, "wireframe")) ==
+      JSONBoolean) {
+    config.wireframe = json_object_dotget_boolean(object, "wireframe");
+  }
+
   json_value_free(root);
 
   return true;
