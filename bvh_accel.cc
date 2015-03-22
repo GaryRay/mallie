@@ -860,7 +860,7 @@ bool TestLeafNode(Intersection &isect, // [inout]
       isect.u = u;
       isect.v = v;
       isect.faceID = faceIdx;
-      isect.matID = mesh->material_ids[faceIdx];
+      isect.matID = mesh->materialIDs[faceIdx];
       hit = true;
     }
 #endif
