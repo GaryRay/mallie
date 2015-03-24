@@ -7,6 +7,8 @@ struct Material {
   real3 diffuse;
   real3 reflection;
   real  reflection_glossiness;
+  real3 refraction;
+  real  refraction_glossiness;
   int   fresnel; // 1 = Fresnel reflection on, 0 = off.
   float ior; // index of reflection.
   int   id;

@@ -63,6 +63,7 @@ typedef std::vector<PathVertex> Path;
 // HACK: SGA14 TechBrief
 Plane gPlane;
 bool gPlaneInitialied = false;
+bool gHasPlane = false;
 
 void init_plane(const real3& sceneBMin, const real3& sceneBMax, int matID)
 {
@@ -324,7 +325,7 @@ bool TraceRay(Intersection& isect, const Scene &scene, Ray &ray) {
   hit = (int)scene.Trace(isect, ray);
 
   // plane hit test
-  if (0) {
+  if (gHasPlane) {
     Intersection planeIsect; planeIsect.t = std::numeric_limits<real>::max();
     bool planeHit = gPlane.Intersect(&planeIsect, ray);
     if (planeHit && (planeIsect.t < isect.t)) {
@@ -568,6 +569,10 @@ void Render(Scene &scene, const RenderConfig &config,
 
     init_plane(sceneBMin, sceneBMax, planeMatID);
 
+  }
+
+  if (config.plane) {
+    gHasPlane = true;
   }
 
   mallie::timerutil t;

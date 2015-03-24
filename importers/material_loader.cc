@@ -86,6 +86,27 @@ MaterialLoader::Load(
         printf("Mallie:debug\treflection_glossiness:%f\n", mat.reflection_glossiness);
       }
 
+      mat.refraction[0] = 0.0;
+      mat.refraction[1] = 0.0;
+      mat.refraction[2] = 0.0;
+      if (json_value_get_type(json_object_dotget_value(m, "refraction")) ==
+          JSONArray) {
+        JSON_Array *array = json_object_dotget_array(m, "refraction");
+        if (json_array_get_count(array) == 3) {
+          mat.refraction[0] = json_array_get_number(array, 0);
+          mat.refraction[1] = json_array_get_number(array, 1);
+          mat.refraction[2] = json_array_get_number(array, 2);
+          printf("Mallie:debug\trefraction:%f, %f, %f\n", mat.refraction[0], mat.refraction[1], mat.refraction[2]);
+        }
+      }
+
+      mat.refraction_glossiness = 1.0;
+      if (json_value_get_type(json_object_dotget_value(m, "refraction_glossiness")) ==
+          JSONNumber) {
+        mat.refraction_glossiness = json_object_dotget_number(m, "refraction_glossiness");
+        printf("Mallie:debug\trefraction_glossiness:%f\n", mat.refraction_glossiness);
+      }
+
       mat.fresnel = 0;
       if (json_value_get_type(json_object_dotget_value(m, "fresnel")) ==
           JSONBoolean) {

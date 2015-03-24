@@ -320,7 +320,9 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
   // Preserve Energy conservation for each channel.
   real3 diffuse = mat.diffuse;
   real3 reflection = mat.reflection;
+  real3 refraction = mat.refraction;
   float reflectionGlossiness = mat.reflection_glossiness;
+  float refractionGlossiness = mat.refraction_glossiness;
   bool  fresnel = mat.fresnel;
   float ior = mat.ior;
 
@@ -338,9 +340,13 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
   float eta = 1.0 / ior;
   real3 ns;
 
+  // ks wins, kt next, kd weaks.
   real3 one(1.0, 1.0, 1.0);
-  real3 ksRGB = reflection;
-  real3 kdRGB = vclamp01((one - ksRGB) * diffuse);
+  real3 ksRGB0 = reflection;
+  real3 ktRGB0 = refraction;
+  real3 ksRGB = ksRGB0;
+  real3 ktRGB = vclamp01((one - ksRGB0) * ktRGB0);
+  real3 kdRGB = vclamp01((one - ksRGB - ktRGB) * diffuse);
 
   if (fresnel) { // adjust ks and kd energy with fresnel factor.
     real3 ns = n;
@@ -356,8 +362,9 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
     fresnel_factor(sDir, tDir, fresnelKr, fresnelKt, in, ns, eta);
     // sDir and tDir not used.
 
-    ksRGB = fresnelKr * reflection;
-    kdRGB = vclamp01((one - ksRGB) * diffuse);
+    ksRGB = fresnelKr * ksRGB0;
+    ktRGB = fresnelKt * ktRGB0;
+    kdRGB = vclamp01((one - ksRGB - ktRGB) * diffuse);
   }
 
   //printf("diff = %f, %f, %f\n", diffuse[0], diffuse[1], diffuse[2]);
@@ -365,9 +372,11 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
   //printf("kd = %f, %f, %f\n", kdRGB[0], kdRGB[1], kdRGB[2]);
 
   float ks = vavg(ksRGB); ks = std::min(1.0f, std::max(0.0f, ks));
+  float kt = vavg(ktRGB); kt = std::min(1.0f, std::max(0.0f, kt));
   float kd = vavg(kdRGB); kd = std::min(1.0f, std::max(0.0f, kd));
 
   real3 kdRet(0.0, 0.0, 0.0);
+  real3 ktRet(0.0, 0.0, 0.0);
   real3 ksRet(0.0, 0.0, 0.0);
   if (kd > 0.0) {
 
@@ -483,10 +492,90 @@ void PBS(float rgba[4], const Scene &scene, const Intersection &isect,
     }
   }
 
+  // refraction
+  if (kt > 0.0) {
+
+    // Simple Ward refraction.
+    // @todo { GGX Glossy transmission. }
+    real3 r;
+
+    float weight = 1.0;
+
+    if (refractionGlossiness < 1.0) {
+      // glossy reflection. WardBRDF
+      
+      float pdf;
+
+      // larget = sharper.
+      float ax = 1.0f * (1.0f - refractionGlossiness); // isotropic
+      float ay = 1.0f * (1.0f - refractionGlossiness);
+
+      real3 wi = in.neg();
+
+      WardBRDF(&r, &pdf, &weight, ax, ay, wi, n, n);
+      //printf("w = %f, r = %f, %f, %f, n = %f, %f, %f\n",
+      //  weight, r[0], r[1], r[2], n[0], n[1], n[2]);
+
+      // HACK
+      r = r.neg();
+      weight = 1.0;
+
+    } else {
+      // perfect transmission.
+      bool tir = false;
+      r = refract(tir, in, n, eta);
+    }
+
+    float dir[3];
+    dir[0] = r[0];
+    dir[1] = r[1];
+    dir[2] = r[2];
+
+    float rmag = r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+
+    if ((weight > 0.0) && (rmag > 0.1)) {
+
+      Ray refrRay;
+      refrRay.dir = r;
+      refrRay.org = isect.position + 0.01f * r;
+      refrRay.depth = ray.depth + 1;
+
+      Intersection refrIsect;
+      refrIsect.t = 1.0e+30;
+      bool hit = TraceRay(refrIsect, scene, refrRay);
+
+      if (hit) {
+
+        float refrRGBA[4];
+        PBS(refrRGBA, scene, refrIsect, refrRay);
+
+        ktRet[0] = ktRGB[0] * refrRGBA[0];
+        ktRet[1] = ktRGB[1] * refrRGBA[1];
+        ktRet[2] = ktRGB[2] * refrRGBA[2];
+        ktRet[3] = 1.0; // fixme
+
+      } else {
+        // env light
+        float rgba[4];
+        EnvCol(rgba, scene, r);
+
+        ktRet[0] = ktRGB[0] * rgba[0];
+        ktRet[1] = ktRGB[1] * rgba[1];
+        ktRet[2] = ktRGB[2] * rgba[2];
+      }
+
+    } else {
+      // ???
+      ktRet[0] = 0.0;
+      ktRet[1] = 0.0;
+      ktRet[2] = 0.0;
+    }
+  }
+
   // @fixme.
-  rgba[0] = 0.5*3.14 * (kdRet[0] + ksRet[0]);
-  rgba[1] = 0.5*3.14 * (kdRet[1] + ksRet[1]);
-  rgba[2] = 0.5*3.14 * (kdRet[2] + ksRet[2]);
+  rgba[0] = 0.5*3.14 * (kdRet[0] + ksRet[0] + ktRet[0]);
+  rgba[1] = 0.5*3.14 * (kdRet[1] + ksRet[1] + ktRet[1]);
+  rgba[2] = 0.5*3.14 * (kdRet[2] + ksRet[2] + ktRet[2]);
   rgba[3] = 1.0;
 }
 
