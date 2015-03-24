@@ -6,7 +6,7 @@
 #include <cmath>
 #include <cstring>
 #include <cstdio>
-
+#include <algorithm>
 #include <vector>
 
 #include "common.h"
@@ -104,10 +104,10 @@ void FeatureLineImageSpace::Filter(float *outputs, // output image.
         // same dir = near to 1.0, diff dir = near to 0.0, so we take min() to
         // compute diffMax.
         float normalDiff = fabs(vdot(n, normal));
-        normalDiffMax = std::min(normalDiff, normalDiffMax);
+        normalDiffMax = std::min<float>(normalDiff, normalDiffMax);
 
         if (fabsf(t_s - t_r) > 0.1f && (t_s > 0.1f) && (t_r > 0.1f)) {
-          distDiffMax = std::max(distDiffMax, fabsf(t_s - t_r));
+          distDiffMax = std::max<float>(distDiffMax, fabsf(t_s - t_r));
         }
       }
 
