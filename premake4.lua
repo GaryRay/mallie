@@ -75,6 +75,7 @@ sources = {
    "scene.h",
    "spectrum.cc",
    "jpge.cc",
+   "lodepng.cpp",
    "deps/parson/parson.c",
    "tasksys.cc",
    "texture.cc",

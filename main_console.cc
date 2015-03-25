@@ -16,6 +16,7 @@
 #include "timerutil.h"
 #include "render.h"
 #include "jpge.h"
+#include "lodepng.h"
 
 namespace mallie {
 
@@ -51,6 +52,16 @@ void SaveAsJPEG(const char *filename,
   assert(ret);
 }
 
+void SaveAsPNG(const char *filename,
+              std::vector<unsigned char> &image, // RGB
+              int width, int height) {
+  size_t out_size = 0;
+  std::vector<unsigned char> out;
+  unsigned int ret = lodepng::encode(filename, &image.at(0), width, height, LCT_RGB);
+  assert(ret);
+}
+
+
 } // local
 
 void DoMainConsole(Scene &scene, const RenderConfig &config) {
@@ -67,7 +78,7 @@ void DoMainConsole(Scene &scene, const RenderConfig &config) {
   mallie::Render(scene, config, image, count, config.eye, config.lookat,
                  config.up, config.quat, 1);
 
-  std::string outfilename("output.jpg"); // fixme
+  std::string outfilename("output.png"); // fixme
 
   std::vector<unsigned char> out;
   HDRToLDR(out, image, width, height);
