@@ -58,7 +58,7 @@ void SaveAsPNG(const char *filename,
   size_t out_size = 0;
   std::vector<unsigned char> out;
   unsigned int ret = lodepng::encode(filename, &image.at(0), width, height, LCT_RGB);
-  assert(ret);
+  //assert(ret);
 }
 
 
@@ -82,7 +82,7 @@ void DoMainConsole(Scene &scene, const RenderConfig &config) {
 
   std::vector<unsigned char> out;
   HDRToLDR(out, image, width, height);
-  SaveAsJPEG(outfilename.c_str(), out, width, height);
+  SaveAsPNG(outfilename.c_str(), out, width, height);
 
   printf("[Mallie] Output %s\n", outfilename.c_str());
 }

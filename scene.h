@@ -61,7 +61,9 @@ public:
   real3 GetBackgroundRadiance(real3 &dir);
 
   const Material &GetMaterial(int matID) const {
-    assert(matID < materials_.size());
+    if (matID < 0 || matID >= materials_.size()) {
+      return defaultMaterial_;
+    }
     return materials_[matID];
   }
 
@@ -92,6 +94,7 @@ protected:
   std::vector<Material> materials_;
   Camera camera_;
   Shader shader_;
+  Material defaultMaterial_;
 
   Texture envMap_; // Environment map(Assume angular map coordinte)
 

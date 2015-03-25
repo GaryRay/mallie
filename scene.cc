@@ -139,6 +139,19 @@ bool Scene::Init(const std::string &objFilename,
     printf("Mallie:info\tnum_materials:%d\n", materials_.size());
   }
 
+  // default material.
+  defaultMaterial_.diffuse[0] = 0.5;
+  defaultMaterial_.diffuse[1] = 0.5;
+  defaultMaterial_.diffuse[2] = 0.5;
+  defaultMaterial_.reflection[0] = 0.0;
+  defaultMaterial_.reflection[1] = 0.0;
+  defaultMaterial_.reflection[2] = 0.0;
+  defaultMaterial_.refraction[0] = 0.0;
+  defaultMaterial_.refraction[1] = 0.0;
+  defaultMaterial_.refraction[2] = 0.0;
+  defaultMaterial_.ior = 1.0;
+  defaultMaterial_.fresnel = false;
+
   if (!ptexFilename.empty()) {
     ptex_ = new PTexture(materialFilename.c_str());
   }
