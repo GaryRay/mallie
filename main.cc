@@ -94,7 +94,7 @@ static int GetNumCPUs() {
 
 bool InitScene(mallie::Scene &scene, mallie::RenderConfig &config) {
   return scene.Init(config.obj_filename, config.eson_filename,
-                    config.material_filename, config.ptex_filename, config.envmap_filename, config.envmap_coord, config.scene_scale);
+                    config.material_filename, config.ptex_filename, config.envmap_filename, config.envmap_coord, config.scene_scale, config.bvh_min_leaf_primitives);
 }
 
 bool LoadJSONConfig(mallie::RenderConfig &config, // [out]
@@ -215,6 +215,11 @@ bool LoadJSONConfig(mallie::RenderConfig &config, // [out]
   if (json_value_get_type(json_object_dotget_value(object, "wireframe")) ==
       JSONBoolean) {
     config.wireframe = json_object_dotget_boolean(object, "wireframe");
+  }
+
+  if (json_value_get_type(json_object_dotget_value(object, "bvh_min_leaf_primitives")) ==
+      JSONNumber) {
+    config.bvh_min_leaf_primitives = (int)json_object_dotget_number(object, "bvh_min_leaf_primitives");
   }
 
   json_value_free(root);

@@ -40,9 +40,11 @@ struct RenderConfig {
 
   float display_gamma;
 
+  int bvh_min_leaf_primitives;
+
   RenderConfig()
       : fov(60.0), width(512), height(512), scene_scale(1.0), plane(false),
-        num_passes(10), num_photons(10000), display_gamma(2.2f), wireframe(false) {
+        num_passes(10), num_photons(10000), display_gamma(2.2f), wireframe(false), bvh_min_leaf_primitives(16) {
 
     eye[0] = 0.0;
     eye[1] = 0.0;

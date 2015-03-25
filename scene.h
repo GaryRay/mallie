@@ -51,7 +51,8 @@ public:
             const std::string &materialFilename,
             const std::string &ptexFilename,
             const std::string &envmapFilename, const std::string &envmapCoord,
-            double sceneScale = 1.0);
+            double sceneScale = 1.0,
+            int numLeafPrimitives = 16);
 
   bool Trace(Intersection &isect, Ray &ray) const;
 

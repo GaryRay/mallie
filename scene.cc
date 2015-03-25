@@ -42,7 +42,7 @@ bool Scene::Init(const std::string &objFilename,
                  const std::string &materialFilename,
                  const std::string &ptexFilename,
                  const std::string &envmapFilename,
-                 const std::string &envmapCoord, double sceneScale) {
+                 const std::string &envmapCoord, double sceneScale, int minLeafPrimitives) {
 
   bool ret = false;
 #if 1
@@ -86,6 +86,8 @@ bool Scene::Init(const std::string &objFilename,
   t.start();
 
   BVHBuildOptions options; // Use default option
+
+  options.minLeafPrimitives = minLeafPrimitives;
 
   printf("  BVH build option:\n");
   printf("    # of leaf primitives: %d\n", options.minLeafPrimitives);
